@@ -124,6 +124,9 @@ async function init() {
       // Update camera to follow car
       cameraController.update();
 
+      // Update remote players (interpolation)
+      remotePlayersManager.update();
+
       // Send player update to server at fixed intervals
       if (updateTimer >= NETWORK_UPDATE_INTERVAL && playerCar.isModelReady()) {
         const position = playerCar.getPosition();

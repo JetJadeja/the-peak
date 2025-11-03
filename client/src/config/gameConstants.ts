@@ -37,6 +37,7 @@ export const KEY_RIGHT = 'd';
 // Network Configuration
 export const NETWORK_UPDATE_RATE = 20; // Updates per second
 export const NETWORK_UPDATE_INTERVAL = 1 / NETWORK_UPDATE_RATE;
+export const REMOTE_PLAYER_LERP_SPEED = 0.2; // Interpolation speed for remote players
 
 // UI Configuration
 export const ERROR_DISPLAY_DURATION = 5000; // milliseconds

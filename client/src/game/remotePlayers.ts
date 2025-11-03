@@ -2,12 +2,14 @@ import * as THREE from 'three';
 import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import { Player } from '@the-peak/shared';
 import { AssetLoader } from '../utils/assetLoader';
-import { CAR_MODEL_PATH } from '../config/gameConstants';
+import { CAR_MODEL_PATH, REMOTE_PLAYER_LERP_SPEED } from '../config/gameConstants';
 
 interface RemotePlayer {
   model: THREE.Group;
   label: CSS2DObject;
   data: Player;
+  targetPosition: THREE.Vector3;
+  targetRotation: THREE.Euler;
 }
 
 export class RemotePlayersManager {
@@ -29,7 +31,6 @@ export class RemotePlayersManager {
       const assetLoader = AssetLoader.getInstance();
       const gltf = await assetLoader.loadGLTF(CAR_MODEL_PATH);
       this.carTemplate = gltf.scene;
-      this.isCarTemplateLoaded = true;
       console.log('Car template loaded for remote players');
     } catch (error) {
       console.error('Failed to load car template:', error);
@@ -99,7 +100,25 @@ export class RemotePlayersManager {
 
     this.scene.add(model);
 
-    this.players.set(player.id, { model, label, data: player });
+    // Initialize target position and rotation to current values
+    const targetPosition = new THREE.Vector3(
+      player.position.x,
+      player.position.y,
+      player.position.z
+    );
+    const targetRotation = new THREE.Euler(
+      player.rotation.x,
+      player.rotation.y,
+      player.rotation.z
+    );
+
+    this.players.set(player.id, {
+      model,
+      label,
+      data: player,
+      targetPosition,
+      targetRotation,
+    });
 
     console.log(`Added remote player: ${player.username} (${player.id})`);
   }
@@ -144,8 +163,34 @@ export class RemotePlayersManager {
     const player = this.players.get(playerId);
     if (!player) return;
 
-    player.model.position.set(position.x, position.y, position.z);
-    player.model.rotation.set(rotation.x, rotation.y, rotation.z);
+    // Update target position and rotation instead of directly setting
+    player.targetPosition.set(position.x, position.y, position.z);
+    player.targetRotation.set(rotation.x, rotation.y, rotation.z);
+  }
+
+  update(): void {
+    // Interpolate all remote players towards their target positions
+    this.players.forEach((player) => {
+      // Lerp position
+      player.model.position.lerp(player.targetPosition, REMOTE_PLAYER_LERP_SPEED);
+
+      // Lerp rotation
+      player.model.rotation.x = THREE.MathUtils.lerp(
+        player.model.rotation.x,
+        player.targetRotation.x,
+        REMOTE_PLAYER_LERP_SPEED
+      );
+      player.model.rotation.y = THREE.MathUtils.lerp(
+        player.model.rotation.y,
+        player.targetRotation.y,
+        REMOTE_PLAYER_LERP_SPEED
+      );
+      player.model.rotation.z = THREE.MathUtils.lerp(
+        player.model.rotation.z,
+        player.targetRotation.z,
+        REMOTE_PLAYER_LERP_SPEED
+      );
+    });
   }
 
   render(camera: THREE.Camera): void {
