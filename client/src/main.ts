@@ -1,40 +1,28 @@
-import * as THREE from 'three';
+import { createScene } from './scene/setup';
+import { Ground } from './track';
+import { PlayerCar, CameraController } from './player';
 import './style.css';
 
-// Basic Three.js scene setup
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x87ceeb);
+// Initialize scene
+const { scene, camera, renderer } = createScene();
 
-const camera = new THREE.PerspectiveCamera(
-  75,
-  window.innerWidth / window.innerHeight,
-  0.1,
-  1000
-);
-camera.position.z = 5;
+// Initialize ground
+const ground = new Ground(scene);
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.getElementById('app')?.appendChild(renderer.domElement);
+// Initialize player car
+const playerCar = new PlayerCar(scene);
 
-// Add a simple cube for now
-const geometry = new THREE.BoxGeometry(1, 1, 1);
-const material = new THREE.MeshBasicMaterial({ color: 0xff4444 });
-const cube = new THREE.Mesh(geometry, material);
-scene.add(cube);
-
-// Handle window resize
-window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-});
+// Initialize camera controller
+const cameraController = new CameraController(camera, playerCar);
 
 // Animation loop
 function animate() {
   requestAnimationFrame(animate);
-  cube.rotation.x += 0.01;
-  cube.rotation.y += 0.01;
+
+  // Update camera to follow car
+  cameraController.update();
+
+  // Render scene
   renderer.render(scene, camera);
 }
 

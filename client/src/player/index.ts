@@ -1,1 +1,2 @@
-// Player exports - empty for now
+export { PlayerCar } from './car';
+export { CameraController } from './camera';
