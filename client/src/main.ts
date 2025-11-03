@@ -1,36 +1,40 @@
-import { createScene } from './scene/setup';
-import { InputHandler, PlayerCar, CameraController } from './player';
+import * as THREE from 'three';
 import './style.css';
 
-// Initialize scene
-const { scene, camera, renderer, terrain } = createScene();
+// Basic Three.js scene setup
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87ceeb);
 
-// Initialize input handler
-const inputHandler = new InputHandler();
+const camera = new THREE.PerspectiveCamera(
+  75,
+  window.innerWidth / window.innerHeight,
+  0.1,
+  1000
+);
+camera.position.z = 5;
 
-// Initialize player car
-const playerCar = new PlayerCar(scene, terrain, inputHandler);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.getElementById('app')?.appendChild(renderer.domElement);
 
-// Initialize camera controller
-const cameraController = new CameraController(camera, playerCar);
+// Add a simple cube for now
+const geometry = new THREE.BoxGeometry(1, 1, 1);
+const material = new THREE.MeshBasicMaterial({ color: 0xff4444 });
+const cube = new THREE.Mesh(geometry, material);
+scene.add(cube);
 
-// Animation loop with delta time
-let lastTime = performance.now();
+// Handle window resize
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
 
+// Animation loop
 function animate() {
   requestAnimationFrame(animate);
-
-  const currentTime = performance.now();
-  const deltaTime = (currentTime - lastTime) / 1000; // Convert to seconds
-  lastTime = currentTime;
-
-  // Update player car
-  playerCar.update(deltaTime);
-
-  // Update camera to follow player
-  cameraController.update();
-
-  // Render scene
+  cube.rotation.x += 0.01;
+  cube.rotation.y += 0.01;
   renderer.render(scene, camera);
 }
 
