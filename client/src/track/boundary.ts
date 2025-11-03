@@ -9,9 +9,9 @@ export interface BoundaryConfig {
 }
 
 export const DEFAULT_BOUNDARY_CONFIG: BoundaryConfig = {
-  width: 300,    // Width (X-axis) - enough for winding
-  height: 250,   // Height (Y-axis) - mountain climb
-  depth: 600,    // Depth (Z-axis) - length of the track
+  width: 450,    // Width (X-axis) - room for sweeping turns
+  height: 350,   // Height (Y-axis) - tall enough for the peak
+  depth: 900,    // Depth (Z-axis) - length of climb to peak
   wallThickness: 2,
   wallColor: 0x3a3a3a,
 };

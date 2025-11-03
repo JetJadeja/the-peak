@@ -1,16 +1,37 @@
-import { createScene, startAnimationLoop } from './scene/setup';
-import { PlayerManager } from './game/player';
-import { NetworkManager } from './network/socket';
+import { createScene } from './scene/setup';
+import { InputHandler, PlayerCar, CameraController } from './player';
 import './style.css';
 
 // Initialize scene
-const { scene, camera, renderer } = createScene();
+const { scene, camera, renderer, terrain } = createScene();
 
-// Initialize player manager
-const playerManager = new PlayerManager(scene);
+// Initialize input handler
+const inputHandler = new InputHandler();
 
-// Initialize network manager
-new NetworkManager(playerManager);
+// Initialize player car
+const playerCar = new PlayerCar(scene, terrain, inputHandler);
 
-// Start animation loop
-startAnimationLoop(scene, camera, renderer);
+// Initialize camera controller
+const cameraController = new CameraController(camera, playerCar);
+
+// Animation loop with delta time
+let lastTime = performance.now();
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  const currentTime = performance.now();
+  const deltaTime = (currentTime - lastTime) / 1000; // Convert to seconds
+  lastTime = currentTime;
+
+  // Update player car
+  playerCar.update(deltaTime);
+
+  // Update camera to follow player
+  cameraController.update();
+
+  // Render scene
+  renderer.render(scene, camera);
+}
+
+animate();
