@@ -105,6 +105,15 @@ export class RemotePlayersManager {
     const player = this.players.get(playerId);
     if (!player) return;
 
+    // Remove label from model first
+    player.model.remove(player.label);
+
+    // Remove label DOM element
+    if (player.label.element.parentNode) {
+      player.label.element.parentNode.removeChild(player.label.element);
+    }
+
+    // Remove model from scene
     this.scene.remove(player.model);
 
     // Dispose of all meshes in the model
