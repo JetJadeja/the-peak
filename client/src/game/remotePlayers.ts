@@ -1,9 +1,11 @@
 import * as THREE from 'three';
 import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import { Player } from '@the-peak/shared';
+import { AssetLoader } from '../utils/assetLoader';
+import { CAR_MODEL_PATH } from '../config/gameConstants';
 
 interface RemotePlayer {
-  mesh: THREE.Mesh;
+  model: THREE.Group;
   label: CSS2DObject;
   data: Player;
 }
@@ -12,10 +14,25 @@ export class RemotePlayersManager {
   private players: Map<string, RemotePlayer> = new Map();
   private scene: THREE.Scene;
   private labelRenderer: CSS2DRenderer;
+  private carTemplate: THREE.Group | null = null;
+  private isCarTemplateLoaded: boolean = false;
 
   constructor(scene: THREE.Scene, container: HTMLElement) {
     this.scene = scene;
     this.labelRenderer = this.createLabelRenderer(container);
+    this.loadCarTemplate();
+  }
+
+  private async loadCarTemplate(): Promise<void> {
+    try {
+      const assetLoader = AssetLoader.getInstance();
+      const gltf = await assetLoader.loadGLTF(CAR_MODEL_PATH);
+      this.carTemplate = gltf.scene;
+      this.isCarTemplateLoaded = true;
+      console.log('Car template loaded for remote players');
+    } catch (error) {
+      console.error('Failed to load car template:', error);
+    }
   }
 
   private createLabelRenderer(container: HTMLElement): CSS2DRenderer {
@@ -34,10 +51,18 @@ export class RemotePlayersManager {
     return labelRenderer;
   }
 
-  private createPlayerMesh(color: number = 0x00ff00): THREE.Mesh {
-    const geometry = new THREE.BoxGeometry(2, 1, 3);
-    const material = new THREE.MeshStandardMaterial({ color });
-    return new THREE.Mesh(geometry, material);
+  private cloneCarModel(): THREE.Group {
+    if (!this.carTemplate) {
+      // Fallback to simple box if car not loaded yet
+      const geometry = new THREE.BoxGeometry(2, 1, 3);
+      const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+      const mesh = new THREE.Mesh(geometry, material);
+      const group = new THREE.Group();
+      group.add(mesh);
+      return group;
+    }
+
+    return this.carTemplate.clone(true);
   }
 
   private createPlayerLabel(username: string): CSS2DObject {
@@ -55,23 +80,23 @@ export class RemotePlayersManager {
     div.style.whiteSpace = 'nowrap';
 
     const label = new CSS2DObject(div);
-    label.position.set(0, 2, 0); // Position above the player
+    label.position.set(0, 3, 0); // Position above the car
     return label;
   }
 
   addPlayer(player: Player): void {
     if (this.players.has(player.id)) return;
 
-    const mesh = this.createPlayerMesh();
-    mesh.position.set(player.position.x, player.position.y, player.position.z);
-    mesh.rotation.set(player.rotation.x, player.rotation.y, player.rotation.z);
+    const model = this.cloneCarModel();
+    model.position.set(player.position.x, player.position.y, player.position.z);
+    model.rotation.set(player.rotation.x, player.rotation.y, player.rotation.z);
 
     const label = this.createPlayerLabel(player.username);
-    mesh.add(label);
+    model.add(label);
 
-    this.scene.add(mesh);
+    this.scene.add(model);
 
-    this.players.set(player.id, { mesh, label, data: player });
+    this.players.set(player.id, { model, label, data: player });
 
     console.log(`Added remote player: ${player.username} (${player.id})`);
   }
@@ -80,11 +105,19 @@ export class RemotePlayersManager {
     const player = this.players.get(playerId);
     if (!player) return;
 
-    this.scene.remove(player.mesh);
-    player.mesh.geometry.dispose();
-    if (player.mesh.material instanceof THREE.Material) {
-      player.mesh.material.dispose();
-    }
+    this.scene.remove(player.model);
+
+    // Dispose of all meshes in the model
+    player.model.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        child.geometry.dispose();
+        if (Array.isArray(child.material)) {
+          child.material.forEach((material) => material.dispose());
+        } else {
+          child.material.dispose();
+        }
+      }
+    });
 
     this.players.delete(playerId);
 
@@ -99,8 +132,8 @@ export class RemotePlayersManager {
     const player = this.players.get(playerId);
     if (!player) return;
 
-    player.mesh.position.set(position.x, position.y, position.z);
-    player.mesh.rotation.set(rotation.x, rotation.y, rotation.z);
+    player.model.position.set(position.x, position.y, position.z);
+    player.model.rotation.set(rotation.x, rotation.y, rotation.z);
   }
 
   render(camera: THREE.Camera): void {
@@ -116,6 +149,20 @@ export class RemotePlayersManager {
       this.removePlayer(id);
     });
     this.players.clear();
+
+    if (this.carTemplate) {
+      this.carTemplate.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.geometry.dispose();
+          if (Array.isArray(child.material)) {
+            child.material.forEach((material) => material.dispose());
+          } else {
+            child.material.dispose();
+          }
+        }
+      });
+      this.carTemplate = null;
+    }
 
     if (this.labelRenderer.domElement.parentElement) {
       this.labelRenderer.domElement.parentElement.removeChild(
