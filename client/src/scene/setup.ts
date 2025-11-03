@@ -1,23 +1,26 @@
 import * as THREE from 'three';
+import { TrackBoundary } from '../track';
 
 export interface SceneSetup {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
   renderer: THREE.WebGLRenderer;
+  trackBoundary: TrackBoundary;
 }
 
 export function createScene(): SceneSetup {
   // Scene
   const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x87ceeb); // Sky blue background
 
-  // Camera
+  // Camera - positioned INSIDE the arena, elevated to see the whole play area
   const camera = new THREE.PerspectiveCamera(
     75,
     window.innerWidth / window.innerHeight,
     0.1,
-    1000
+    2000
   );
-  camera.position.set(0, 5, 10);
+  camera.position.set(0, 200, 180);
   camera.lookAt(0, 0, 0);
 
   // Renderer
@@ -31,10 +34,13 @@ export function createScene(): SceneSetup {
   // Ground
   setupGround(scene);
 
+  // Track boundary
+  const trackBoundary = setupTrackBoundary(scene);
+
   // Handle window resize
   setupResizeHandler(camera, renderer);
 
-  return { scene, camera, renderer };
+  return { scene, camera, renderer, trackBoundary };
 }
 
 function setupLighting(scene: THREE.Scene): void {
@@ -47,11 +53,17 @@ function setupLighting(scene: THREE.Scene): void {
 }
 
 function setupGround(scene: THREE.Scene): void {
-  const groundGeometry = new THREE.PlaneGeometry(100, 100);
-  const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x808080 });
+  const groundGeometry = new THREE.PlaneGeometry(300, 600); // Width x Depth
+  const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x2d5a2d });
   const ground = new THREE.Mesh(groundGeometry, groundMaterial);
   ground.rotation.x = -Math.PI / 2;
   scene.add(ground);
+}
+
+function setupTrackBoundary(scene: THREE.Scene): TrackBoundary {
+  const trackBoundary = new TrackBoundary();
+  trackBoundary.create(scene);
+  return trackBoundary;
 }
 
 function setupResizeHandler(
