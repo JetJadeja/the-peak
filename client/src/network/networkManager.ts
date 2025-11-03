@@ -17,6 +17,7 @@ export class NetworkManager {
   private onPlayerJoined?: (player: Player) => void;
   private onPlayerLeft?: (playerId: string) => void;
   private onPlayerUpdated?: (data: { id: string } & PlayerUpdatePayload) => void;
+  private onError?: (error: string) => void;
 
   constructor() {
     this.socket = io(SERVER_URL);
@@ -31,6 +32,11 @@ export class NetworkManager {
 
     this.socket.on('disconnect', () => {
       console.log('Disconnected from server');
+    });
+
+    this.socket.on('error', (data: { message: string }) => {
+      console.error('Server error:', data.message);
+      this.onError?.(data.message);
     });
 
     this.socket.on(SocketEvent.GAME_STATE, (state: GameState) => {
@@ -78,6 +84,10 @@ export class NetworkManager {
     callback: (data: { id: string } & PlayerUpdatePayload) => void
   ): void {
     this.onPlayerUpdated = callback;
+  }
+
+  setOnError(callback: (error: string) => void): void {
+    this.onError = callback;
   }
 
   getPlayerId(): string | undefined {

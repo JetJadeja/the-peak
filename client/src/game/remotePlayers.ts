@@ -15,10 +15,11 @@ export class RemotePlayersManager {
   private scene: THREE.Scene;
   private labelRenderer: CSS2DRenderer;
   private carTemplate: THREE.Group | null = null;
-  private isCarTemplateLoaded: boolean = false;
+  private handleResize: () => void;
 
   constructor(scene: THREE.Scene, container: HTMLElement) {
     this.scene = scene;
+    this.handleResize = this.onWindowResize.bind(this);
     this.labelRenderer = this.createLabelRenderer(container);
     this.loadCarTemplate();
   }
@@ -44,11 +45,13 @@ export class RemotePlayersManager {
     container.appendChild(labelRenderer.domElement);
 
     // Handle window resize
-    window.addEventListener('resize', () => {
-      labelRenderer.setSize(window.innerWidth, window.innerHeight);
-    });
+    window.addEventListener('resize', this.handleResize);
 
     return labelRenderer;
+  }
+
+  private onWindowResize(): void {
+    this.labelRenderer.setSize(window.innerWidth, window.innerHeight);
   }
 
   private cloneCarModel(): THREE.Group {
@@ -154,11 +157,16 @@ export class RemotePlayersManager {
   }
 
   dispose(): void {
+    // Remove resize event listener
+    window.removeEventListener('resize', this.handleResize);
+
+    // Remove all players
     this.players.forEach((player, id) => {
       this.removePlayer(id);
     });
     this.players.clear();
 
+    // Dispose car template
     if (this.carTemplate) {
       this.carTemplate.traverse((child) => {
         if (child instanceof THREE.Mesh) {
@@ -173,6 +181,7 @@ export class RemotePlayersManager {
       this.carTemplate = null;
     }
 
+    // Remove label renderer DOM element
     if (this.labelRenderer.domElement.parentElement) {
       this.labelRenderer.domElement.parentElement.removeChild(
         this.labelRenderer.domElement

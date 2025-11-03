@@ -2,12 +2,23 @@ import { createScene } from './scene/setup';
 import { Ground } from './track';
 import { PlayerCar, CameraController, InputHandler } from './player';
 import { AssetLoader } from './utils/assetLoader';
-import { NameInputUI } from './ui';
+import { NameInputUI, ErrorDisplay } from './ui';
 import { NetworkManager } from './network';
 import { RemotePlayersManager } from './game';
+import { NETWORK_UPDATE_INTERVAL } from './config/gameConstants';
 import './style.css';
 
 async function init() {
+  // Initialize error display
+  const errorDisplay = new ErrorDisplay();
+
+  // Get app container
+  const appContainer = document.getElementById('app');
+  if (!appContainer) {
+    errorDisplay.show('Failed to find app container. Please refresh the page.');
+    throw new Error('App container not found');
+  }
+
   // Initialize scene
   const { scene, camera, renderer } = createScene();
 
@@ -36,6 +47,7 @@ async function init() {
     console.log('Car loaded successfully');
   } catch (error) {
     console.error('Failed to initialize game:', error);
+    errorDisplay.show('Failed to load car model. Please refresh the page.');
     return;
   }
 
@@ -44,12 +56,14 @@ async function init() {
 
   // Initialize multiplayer components
   const networkManager = new NetworkManager();
-  const remotePlayersManager = new RemotePlayersManager(
-    scene,
-    document.getElementById('app')!
-  );
+  const remotePlayersManager = new RemotePlayersManager(scene, appContainer);
 
   // Set up network event handlers
+  networkManager.setOnError((error) => {
+    console.error('Network error:', error);
+    errorDisplay.show(error);
+  });
+
   networkManager.setOnGameState((gameState) => {
     console.log('Received game state:', gameState);
     // Add all existing players except ourselves
@@ -94,7 +108,6 @@ async function init() {
     // Start animation loop
     let lastTime = performance.now();
     let updateTimer = 0;
-    const UPDATE_INTERVAL = 1 / 20; // Send updates 20 times per second
 
     function animate() {
       requestAnimationFrame(animate);
@@ -112,7 +125,7 @@ async function init() {
       cameraController.update();
 
       // Send player update to server at fixed intervals
-      if (updateTimer >= UPDATE_INTERVAL && playerCar.isModelReady()) {
+      if (updateTimer >= NETWORK_UPDATE_INTERVAL && playerCar.isModelReady()) {
         const position = playerCar.getPosition();
         const rotation = playerCar.getRotation();
         const velocity = playerCar.getVelocity();
@@ -145,6 +158,7 @@ async function init() {
     remotePlayersManager.dispose();
     renderer.dispose();
     nameInputUI.dispose();
+    errorDisplay.dispose();
   });
 }
 

@@ -11,6 +11,7 @@ import {
   DEFAULT_PLAYER_ROTATION,
   DEFAULT_PLAYER_VELOCITY,
 } from '../config/gameConstants';
+import { validateUsername, sanitizeUsername } from '../utils/validation';
 
 export function registerSocketHandlers(
   io: Server,
@@ -31,11 +32,22 @@ function handleJoinGame(
   gameStateManager: GameStateManager
 ): void {
   socket.on(SocketEvent.JOIN_GAME, (payload: JoinGamePayload) => {
+    // Validate username
+    const validationResult = validateUsername(payload.username);
+    if (!validationResult.isValid) {
+      console.warn(`Invalid username attempt: ${validationResult.error} (${socket.id})`);
+      socket.emit('error', { message: validationResult.error });
+      return;
+    }
+
+    // Sanitize username
+    const sanitizedUsername = sanitizeUsername(payload.username);
+
     const spawnPosition = generateRandomSpawnPosition();
 
     const player: Player = {
       id: socket.id,
-      username: payload.username,
+      username: sanitizedUsername,
       position: spawnPosition,
       rotation: { ...DEFAULT_PLAYER_ROTATION },
       velocity: { ...DEFAULT_PLAYER_VELOCITY },
@@ -49,7 +61,7 @@ function handleJoinGame(
     // Notify all other players about the new player
     socket.broadcast.emit(SocketEvent.PLAYER_JOINED, player);
 
-    console.log(`Player joined: ${payload.username} (${socket.id}) at position (${spawnPosition.x.toFixed(1)}, ${spawnPosition.y.toFixed(1)}, ${spawnPosition.z.toFixed(1)})`);
+    console.log(`Player joined: ${sanitizedUsername} (${socket.id}) at position (${spawnPosition.x.toFixed(1)}, ${spawnPosition.y.toFixed(1)}, ${spawnPosition.z.toFixed(1)})`);
   });
 }
 

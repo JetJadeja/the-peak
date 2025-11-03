@@ -33,3 +33,10 @@ export const KEY_FORWARD = 'w';
 export const KEY_BACKWARD = 's';
 export const KEY_LEFT = 'a';
 export const KEY_RIGHT = 'd';
+
+// Network Configuration
+export const NETWORK_UPDATE_RATE = 20; // Updates per second
+export const NETWORK_UPDATE_INTERVAL = 1 / NETWORK_UPDATE_RATE;
+
+// UI Configuration
+export const ERROR_DISPLAY_DURATION = 5000; // milliseconds
