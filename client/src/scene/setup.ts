@@ -1,4 +1,15 @@
 import * as THREE from 'three';
+import {
+  SCENE_BACKGROUND_COLOR,
+  CAMERA_FOV,
+  CAMERA_NEAR,
+  CAMERA_FAR,
+  AMBIENT_LIGHT_COLOR,
+  AMBIENT_LIGHT_INTENSITY,
+  DIRECTIONAL_LIGHT_COLOR,
+  DIRECTIONAL_LIGHT_INTENSITY,
+  DIRECTIONAL_LIGHT_POSITION,
+} from '../config/gameConstants';
 
 export interface SceneSetup {
   scene: THREE.Scene;
@@ -9,19 +20,20 @@ export interface SceneSetup {
 export function createScene(): SceneSetup {
   // Scene
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x87ceeb);
+  scene.background = new THREE.Color(SCENE_BACKGROUND_COLOR);
 
   // Camera
   const camera = new THREE.PerspectiveCamera(
-    75,
+    CAMERA_FOV,
     window.innerWidth / window.innerHeight,
-    0.1,
-    1000
+    CAMERA_NEAR,
+    CAMERA_FAR
   );
 
   // Renderer
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(window.devicePixelRatio);
   document.getElementById('app')?.appendChild(renderer.domElement);
 
   // Lighting
@@ -34,11 +46,21 @@ export function createScene(): SceneSetup {
 }
 
 function setupLighting(scene: THREE.Scene): void {
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+  const ambientLight = new THREE.AmbientLight(
+    AMBIENT_LIGHT_COLOR,
+    AMBIENT_LIGHT_INTENSITY
+  );
   scene.add(ambientLight);
 
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-  directionalLight.position.set(5, 10, 5);
+  const directionalLight = new THREE.DirectionalLight(
+    DIRECTIONAL_LIGHT_COLOR,
+    DIRECTIONAL_LIGHT_INTENSITY
+  );
+  directionalLight.position.set(
+    DIRECTIONAL_LIGHT_POSITION.x,
+    DIRECTIONAL_LIGHT_POSITION.y,
+    DIRECTIONAL_LIGHT_POSITION.z
+  );
   scene.add(directionalLight);
 }
 

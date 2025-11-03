@@ -1,12 +1,13 @@
 import * as THREE from 'three';
+import { GROUND_SIZE, GROUND_COLOR } from '../config/gameConstants';
 
 export class Ground {
   private mesh: THREE.Mesh;
 
   constructor(scene: THREE.Scene) {
-    const geometry = new THREE.PlaneGeometry(50, 50);
+    const geometry = new THREE.PlaneGeometry(GROUND_SIZE, GROUND_SIZE);
     const material = new THREE.MeshStandardMaterial({
-      color: 0x00ff00,
+      color: GROUND_COLOR,
       side: THREE.DoubleSide,
     });
 
@@ -18,5 +19,12 @@ export class Ground {
 
   getMesh(): THREE.Mesh {
     return this.mesh;
+  }
+
+  dispose(): void {
+    this.mesh.geometry.dispose();
+    if (this.mesh.material instanceof THREE.Material) {
+      this.mesh.material.dispose();
+    }
   }
 }

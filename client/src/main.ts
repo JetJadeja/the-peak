@@ -1,41 +1,76 @@
 import { createScene } from './scene/setup';
 import { Ground } from './track';
 import { PlayerCar, CameraController, InputHandler } from './player';
+import { AssetLoader } from './utils/assetLoader';
 import './style.css';
 
-// Initialize scene
-const { scene, camera, renderer } = createScene();
+async function init() {
+  // Initialize scene
+  const { scene, camera, renderer } = createScene();
 
-// Initialize ground
-const ground = new Ground(scene);
+  // Set up loading callbacks
+  const assetLoader = AssetLoader.getInstance();
+  assetLoader.setProgressCallback((progress) => {
+    console.log(`Loading: ${progress.toFixed(0)}%`);
+  });
+  assetLoader.setCompleteCallback(() => {
+    console.log('All assets loaded');
+  });
 
-// Initialize input handler
-const inputHandler = new InputHandler();
+  // Initialize ground
+  const ground = new Ground(scene);
 
-// Initialize player car
-const playerCar = new PlayerCar(scene, inputHandler);
+  // Initialize input handler
+  const inputHandler = new InputHandler();
 
-// Initialize camera controller
-const cameraController = new CameraController(camera, playerCar);
+  // Initialize player car
+  const playerCar = new PlayerCar(inputHandler);
 
-// Animation loop with delta time
-let lastTime = performance.now();
+  // Load car model and add to scene
+  try {
+    const carModel = await playerCar.load();
+    scene.add(carModel);
+    console.log('Car loaded successfully');
+  } catch (error) {
+    console.error('Failed to initialize game:', error);
+    return;
+  }
 
-function animate() {
-  requestAnimationFrame(animate);
+  // Initialize camera controller
+  const cameraController = new CameraController(camera, playerCar);
 
-  const currentTime = performance.now();
-  const deltaTime = (currentTime - lastTime) / 1000; // Convert to seconds
-  lastTime = currentTime;
+  // Animation loop with delta time
+  let lastTime = performance.now();
 
-  // Update player car
-  playerCar.update(deltaTime);
+  function animate() {
+    requestAnimationFrame(animate);
 
-  // Update camera to follow car
-  cameraController.update();
+    const currentTime = performance.now();
+    const deltaTime = (currentTime - lastTime) / 1000; // Convert to seconds
+    lastTime = currentTime;
 
-  // Render scene
-  renderer.render(scene, camera);
+    // Update player car
+    playerCar.update(deltaTime);
+
+    // Update camera to follow car
+    cameraController.update();
+
+    // Render scene
+    renderer.render(scene, camera);
+  }
+
+  animate();
+
+  // Cleanup on page unload
+  window.addEventListener('beforeunload', () => {
+    playerCar.dispose();
+    ground.dispose();
+    inputHandler.dispose();
+    renderer.dispose();
+  });
 }
 
-animate();
+// Start the application
+init().catch((error) => {
+  console.error('Application initialization failed:', error);
+});

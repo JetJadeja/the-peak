@@ -1,18 +1,30 @@
+import {
+  KEY_FORWARD,
+  KEY_BACKWARD,
+  KEY_LEFT,
+  KEY_RIGHT,
+} from '../config/gameConstants';
+
 export class InputHandler {
   private keys: Map<string, boolean> = new Map();
+  private handleKeyDown: (e: KeyboardEvent) => void;
+  private handleKeyUp: (e: KeyboardEvent) => void;
 
   constructor() {
+    this.handleKeyDown = (e: KeyboardEvent) => {
+      this.keys.set(e.key.toLowerCase(), true);
+    };
+
+    this.handleKeyUp = (e: KeyboardEvent) => {
+      this.keys.set(e.key.toLowerCase(), false);
+    };
+
     this.setupEventListeners();
   }
 
   private setupEventListeners(): void {
-    window.addEventListener('keydown', (e) => {
-      this.keys.set(e.key.toLowerCase(), true);
-    });
-
-    window.addEventListener('keyup', (e) => {
-      this.keys.set(e.key.toLowerCase(), false);
-    });
+    window.addEventListener('keydown', this.handleKeyDown);
+    window.addEventListener('keyup', this.handleKeyUp);
   }
 
   isKeyPressed(key: string): boolean {
@@ -23,11 +35,17 @@ export class InputHandler {
     let forward = 0;
     let turn = 0;
 
-    if (this.isKeyPressed('w')) forward += 1;
-    if (this.isKeyPressed('s')) forward -= 1;
-    if (this.isKeyPressed('a')) turn += 1;
-    if (this.isKeyPressed('d')) turn -= 1;
+    if (this.isKeyPressed(KEY_FORWARD)) forward += 1;
+    if (this.isKeyPressed(KEY_BACKWARD)) forward -= 1;
+    if (this.isKeyPressed(KEY_LEFT)) turn += 1;
+    if (this.isKeyPressed(KEY_RIGHT)) turn -= 1;
 
     return { forward, turn };
+  }
+
+  dispose(): void {
+    window.removeEventListener('keydown', this.handleKeyDown);
+    window.removeEventListener('keyup', this.handleKeyUp);
+    this.keys.clear();
   }
 }

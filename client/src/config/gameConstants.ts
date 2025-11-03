@@ -1,0 +1,35 @@
+// Scene Configuration
+export const SCENE_BACKGROUND_COLOR = 0x87ceeb; // Sky blue
+export const CAMERA_FOV = 75;
+export const CAMERA_NEAR = 0.1;
+export const CAMERA_FAR = 1000;
+
+// Lighting Configuration
+export const AMBIENT_LIGHT_COLOR = 0xffffff;
+export const AMBIENT_LIGHT_INTENSITY = 0.6;
+export const DIRECTIONAL_LIGHT_COLOR = 0xffffff;
+export const DIRECTIONAL_LIGHT_INTENSITY = 0.8;
+export const DIRECTIONAL_LIGHT_POSITION = { x: 5, y: 10, z: 5 };
+
+// Ground Configuration
+export const GROUND_SIZE = 50;
+export const GROUND_COLOR = 0x00ff00; // Green
+
+// Car Configuration
+export const CAR_MODEL_PATH = '/models/cars/e36.glb';
+export const CAR_SPEED = 20;
+export const CAR_TURN_SPEED = 2;
+export const CAR_DECELERATION = 0.95;
+export const CAR_MIN_SPEED_THRESHOLD = 0.1;
+export const CAR_INITIAL_POSITION = { x: 0, y: 0, z: 0 };
+
+// Camera Configuration
+export const CAMERA_OFFSET = { x: 8, y: 3, z: 0 };
+export const CAMERA_LERP_SPEED = 0.1;
+export const CAMERA_LOOK_AT_OFFSET_Y = 1;
+
+// Input Configuration
+export const KEY_FORWARD = 'w';
+export const KEY_BACKWARD = 's';
+export const KEY_LEFT = 'a';
+export const KEY_RIGHT = 'd';
