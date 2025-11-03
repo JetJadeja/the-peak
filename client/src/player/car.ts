@@ -88,6 +88,32 @@ export class PlayerCar {
     return this.model?.quaternion.clone() || new THREE.Quaternion();
   }
 
+  getRotation(): { x: number; y: number; z: number } {
+    if (!this.model) return { x: 0, y: 0, z: 0 };
+    return {
+      x: this.model.rotation.x,
+      y: this.model.rotation.y,
+      z: this.model.rotation.z,
+    };
+  }
+
+  getVelocity(): { x: number; y: number; z: number } {
+    // Calculate velocity based on current speed and direction
+    if (!this.model || Math.abs(this.currentSpeed) < CAR_MIN_SPEED_THRESHOLD) {
+      return { x: 0, y: 0, z: 0 };
+    }
+
+    this.forwardDirection.set(-1, 0, 0);
+    this.forwardDirection.applyQuaternion(this.model.quaternion);
+    this.forwardDirection.multiplyScalar(this.currentSpeed);
+
+    return {
+      x: this.forwardDirection.x,
+      y: this.forwardDirection.y,
+      z: this.forwardDirection.z,
+    };
+  }
+
   isModelReady(): boolean {
     return this.isReady;
   }

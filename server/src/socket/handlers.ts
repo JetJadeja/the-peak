@@ -6,11 +6,16 @@ import {
   Player,
 } from '@the-peak/shared';
 import { GameStateManager } from '../game/state';
+import { generateRandomSpawnPosition } from '../utils/spawnUtils';
+import {
+  DEFAULT_PLAYER_ROTATION,
+  DEFAULT_PLAYER_VELOCITY,
+} from '../config/gameConstants';
 
 export function registerSocketHandlers(
   io: Server,
   gameStateManager: GameStateManager
-) {
+): void {
   io.on('connection', (socket: Socket) => {
     console.log(`Client connected: ${socket.id}`);
 
@@ -24,14 +29,16 @@ function handleJoinGame(
   socket: Socket,
   io: Server,
   gameStateManager: GameStateManager
-) {
+): void {
   socket.on(SocketEvent.JOIN_GAME, (payload: JoinGamePayload) => {
+    const spawnPosition = generateRandomSpawnPosition();
+
     const player: Player = {
       id: socket.id,
       username: payload.username,
-      position: { x: 0, y: 0, z: 0 },
-      rotation: { x: 0, y: 0, z: 0 },
-      velocity: { x: 0, y: 0, z: 0 },
+      position: spawnPosition,
+      rotation: { ...DEFAULT_PLAYER_ROTATION },
+      velocity: { ...DEFAULT_PLAYER_VELOCITY },
     };
 
     gameStateManager.addPlayer(player);
@@ -42,7 +49,7 @@ function handleJoinGame(
     // Notify all other players about the new player
     socket.broadcast.emit(SocketEvent.PLAYER_JOINED, player);
 
-    console.log(`Player joined: ${payload.username} (${socket.id})`);
+    console.log(`Player joined: ${payload.username} (${socket.id}) at position (${spawnPosition.x.toFixed(1)}, ${spawnPosition.y.toFixed(1)}, ${spawnPosition.z.toFixed(1)})`);
   });
 }
 

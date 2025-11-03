@@ -2,6 +2,9 @@ import { createScene } from './scene/setup';
 import { Ground } from './track';
 import { PlayerCar, CameraController, InputHandler } from './player';
 import { AssetLoader } from './utils/assetLoader';
+import { NameInputUI } from './ui';
+import { NetworkManager } from './network';
+import { RemotePlayersManager } from './game';
 import './style.css';
 
 async function init() {
@@ -39,34 +42,109 @@ async function init() {
   // Initialize camera controller
   const cameraController = new CameraController(camera, playerCar);
 
-  // Animation loop with delta time
-  let lastTime = performance.now();
+  // Initialize multiplayer components
+  const networkManager = new NetworkManager();
+  const remotePlayersManager = new RemotePlayersManager(
+    scene,
+    document.getElementById('app')!
+  );
 
-  function animate() {
-    requestAnimationFrame(animate);
+  // Set up network event handlers
+  networkManager.setOnGameState((gameState) => {
+    console.log('Received game state:', gameState);
+    // Add all existing players except ourselves
+    Object.values(gameState.players).forEach((player) => {
+      if (player.id !== networkManager.getPlayerId()) {
+        remotePlayersManager.addPlayer(player);
+      }
+    });
+  });
 
-    const currentTime = performance.now();
-    const deltaTime = (currentTime - lastTime) / 1000; // Convert to seconds
-    lastTime = currentTime;
+  networkManager.setOnPlayerJoined((player) => {
+    console.log('Player joined:', player.username);
+    if (player.id !== networkManager.getPlayerId()) {
+      remotePlayersManager.addPlayer(player);
+    }
+  });
 
-    // Update player car
-    playerCar.update(deltaTime);
+  networkManager.setOnPlayerLeft((playerId) => {
+    console.log('Player left:', playerId);
+    remotePlayersManager.removePlayer(playerId);
+  });
 
-    // Update camera to follow car
-    cameraController.update();
+  networkManager.setOnPlayerUpdated((data) => {
+    remotePlayersManager.updatePlayer(data.id, data.position, data.rotation);
+  });
 
-    // Render scene
-    renderer.render(scene, camera);
+  // Show name input UI
+  const nameInputUI = new NameInputUI();
+  nameInputUI.setOnSubmit((username) => {
+    console.log(`Joining game as: ${username}`);
+    networkManager.joinGame(username);
+    nameInputUI.hide();
+    startGame();
+  });
+
+  let gameStarted = false;
+
+  function startGame() {
+    if (gameStarted) return;
+    gameStarted = true;
+
+    // Start animation loop
+    let lastTime = performance.now();
+    let updateTimer = 0;
+    const UPDATE_INTERVAL = 1 / 20; // Send updates 20 times per second
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const currentTime = performance.now();
+      const deltaTime = (currentTime - lastTime) / 1000; // Convert to seconds
+      lastTime = currentTime;
+
+      updateTimer += deltaTime;
+
+      // Update player car
+      playerCar.update(deltaTime);
+
+      // Update camera to follow car
+      cameraController.update();
+
+      // Send player update to server at fixed intervals
+      if (updateTimer >= UPDATE_INTERVAL && playerCar.isModelReady()) {
+        const position = playerCar.getPosition();
+        const rotation = playerCar.getRotation();
+        const velocity = playerCar.getVelocity();
+
+        networkManager.sendPlayerUpdate({
+          position: { x: position.x, y: position.y, z: position.z },
+          rotation,
+          velocity,
+        });
+
+        updateTimer = 0;
+      }
+
+      // Render scene
+      renderer.render(scene, camera);
+
+      // Render player labels
+      remotePlayersManager.render(camera);
+    }
+
+    animate();
   }
-
-  animate();
 
   // Cleanup on page unload
   window.addEventListener('beforeunload', () => {
     playerCar.dispose();
     ground.dispose();
     inputHandler.dispose();
+    networkManager.dispose();
+    remotePlayersManager.dispose();
     renderer.dispose();
+    nameInputUI.dispose();
   });
 }
 
