@@ -12,8 +12,11 @@ export const DIRECTIONAL_LIGHT_INTENSITY = 0.8;
 export const DIRECTIONAL_LIGHT_POSITION = { x: 5, y: 10, z: 5 };
 
 // Ground Configuration
-export const GROUND_SIZE = 50;
+export const GROUND_SIZE = 100; // Larger terrain
+export const GROUND_SEGMENTS = 100; // Subdivisions for terrain detail
 export const GROUND_COLOR = 0x00ff00; // Green
+export const TERRAIN_HEIGHT = 3; // Maximum hill height
+export const TERRAIN_FREQUENCY = 0.1; // Wave frequency for hills
 
 // Car Configuration
 export const CAR_MODEL_PATH = '/models/cars/e36.glb';

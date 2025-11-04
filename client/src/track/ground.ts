@@ -1,11 +1,47 @@
 import * as THREE from 'three';
-import { GROUND_SIZE, GROUND_COLOR } from '../config/gameConstants';
+import {
+  GROUND_SIZE,
+  GROUND_SEGMENTS,
+  GROUND_COLOR,
+  TERRAIN_HEIGHT,
+  TERRAIN_FREQUENCY,
+} from '../config/gameConstants';
 
 export class Ground {
   private mesh: THREE.Mesh;
 
   constructor(scene: THREE.Scene) {
-    const geometry = new THREE.PlaneGeometry(GROUND_SIZE, GROUND_SIZE);
+    // Create subdivided plane geometry for rolling hills
+    const geometry = new THREE.PlaneGeometry(
+      GROUND_SIZE,
+      GROUND_SIZE,
+      GROUND_SEGMENTS,
+      GROUND_SEGMENTS
+    );
+
+    // Apply rolling hills using sine waves
+    // Based on Three.js voxel terrain generation pattern
+    const positionAttribute = geometry.getAttribute('position');
+
+    for (let i = 0; i < positionAttribute.count; i++) {
+      // Get X and Y coordinates (plane is in XY before rotation)
+      const x = positionAttribute.getX(i);
+      const y = positionAttribute.getY(i);
+
+      // Generate height using multiple sine waves for rolling hills
+      // This creates a natural-looking terrain with varied elevations
+      const height =
+        Math.sin(x * TERRAIN_FREQUENCY) * TERRAIN_HEIGHT +
+        Math.cos(y * TERRAIN_FREQUENCY * 1.3) * TERRAIN_HEIGHT * 0.8;
+
+      // Set Z coordinate (which becomes Y after rotation)
+      positionAttribute.setZ(i, height);
+    }
+
+    // CRITICAL: Recompute normals after modifying vertices
+    // This ensures proper lighting on the hills
+    geometry.computeVertexNormals();
+
     const material = new THREE.MeshStandardMaterial({
       color: GROUND_COLOR,
       side: THREE.DoubleSide,
