@@ -61,12 +61,24 @@ export class RemotePlayersManager {
       const geometry = new THREE.BoxGeometry(2, 1, 3);
       const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
       const mesh = new THREE.Mesh(geometry, material);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
       const group = new THREE.Group();
       group.add(mesh);
       return group;
     }
 
-    return this.carTemplate.clone(true);
+    const clonedModel = this.carTemplate.clone(true);
+
+    // Enable shadows for all meshes in the cloned car
+    clonedModel.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+
+    return clonedModel;
   }
 
   private createPlayerLabel(username: string): CSS2DObject {

@@ -34,6 +34,8 @@ export function createScene(): SceneSetup {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   document.getElementById('app')?.appendChild(renderer.domElement);
 
   // Lighting
@@ -61,7 +63,27 @@ function setupLighting(scene: THREE.Scene): void {
     DIRECTIONAL_LIGHT_POSITION.y,
     DIRECTIONAL_LIGHT_POSITION.z
   );
+
+  // Enable shadows
+  directionalLight.castShadow = true;
+  directionalLight.shadow.mapSize.width = 2048;
+  directionalLight.shadow.mapSize.height = 2048;
+  directionalLight.shadow.camera.left = -50;
+  directionalLight.shadow.camera.right = 50;
+  directionalLight.shadow.camera.top = 50;
+  directionalLight.shadow.camera.bottom = -50;
+  directionalLight.shadow.camera.near = 0.5;
+  directionalLight.shadow.camera.far = 100;
+
   scene.add(directionalLight);
+
+  // Add grid helper for perspective/debugging
+  const gridHelper = new THREE.GridHelper(100, 20, 0x444444, 0x222222);
+  gridHelper.position.y = -0.01; // Slightly below ground to avoid z-fighting
+  scene.add(gridHelper);
+
+  // Add fog for depth perception
+  scene.fog = new THREE.Fog(SCENE_BACKGROUND_COLOR, 30, 80);
 }
 
 function setupResizeHandler(

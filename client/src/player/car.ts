@@ -39,6 +39,15 @@ export class PlayerCar {
         CAR_INITIAL_POSITION.z
       );
       this.model.rotation.y = 0;
+
+      // Enable shadow casting for all meshes in the car model
+      this.model.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+
       this.isReady = true;
 
       return this.model;

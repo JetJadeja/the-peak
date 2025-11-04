@@ -15,7 +15,7 @@ export const DIRECTIONAL_LIGHT_POSITION = { x: 5, y: 10, z: 5 };
 export const GROUND_SIZE = 100; // Larger terrain
 export const GROUND_SEGMENTS = 100; // Subdivisions for terrain detail
 export const GROUND_COLOR = 0x00ff00; // Green
-export const TERRAIN_HEIGHT = 1.5; // Maximum hill height
+export const TERRAIN_HEIGHT = 3.0; // Maximum hill height (steeper)
 export const TERRAIN_FREQUENCY = 0.1; // Wave frequency for hills
 
 // Car Configuration

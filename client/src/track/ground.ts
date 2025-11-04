@@ -49,6 +49,7 @@ export class Ground {
 
     this.mesh = new THREE.Mesh(geometry, material);
     this.mesh.rotation.x = -Math.PI / 2; // Rotate to make it horizontal
+    this.mesh.receiveShadow = true; // Enable shadow receiving
 
     scene.add(this.mesh);
   }
