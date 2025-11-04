@@ -57,6 +57,18 @@ export class Ground {
     return this.mesh;
   }
 
+  /**
+   * Get terrain height at any XZ position
+   * Uses the same formula as terrain generation
+   */
+  getHeightAt(x: number, z: number): number {
+    // Same formula used to generate the terrain mesh
+    const height =
+      Math.sin(x * TERRAIN_FREQUENCY) * TERRAIN_HEIGHT +
+      Math.cos(z * TERRAIN_FREQUENCY * 1.3) * TERRAIN_HEIGHT * 0.8;
+    return height;
+  }
+
   dispose(): void {
     this.mesh.geometry.dispose();
     if (this.mesh.material instanceof THREE.Material) {

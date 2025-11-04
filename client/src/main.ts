@@ -38,7 +38,7 @@ async function init() {
   const inputHandler = new InputHandler();
 
   // Initialize player car
-  const playerCar = new PlayerCar(inputHandler);
+  const playerCar = new PlayerCar(inputHandler, ground);
 
   // Load car model and add to scene
   try {

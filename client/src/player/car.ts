@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { InputHandler } from './input';
 import { AssetLoader } from '../utils/assetLoader';
+import { Ground } from '../track';
 import {
   CAR_MODEL_PATH,
   CAR_SPEED,
@@ -13,6 +14,7 @@ import {
 export class PlayerCar {
   private model: THREE.Group | null = null;
   private inputHandler: InputHandler;
+  private ground: Ground;
   private currentSpeed: number = 0;
   private isReady: boolean = false;
 
@@ -20,8 +22,9 @@ export class PlayerCar {
   private forwardDirection: THREE.Vector3 = new THREE.Vector3();
   private tempVector: THREE.Vector3 = new THREE.Vector3();
 
-  constructor(inputHandler: InputHandler) {
+  constructor(inputHandler: InputHandler, ground: Ground) {
     this.inputHandler = inputHandler;
+    this.ground = ground;
   }
 
   async load(): Promise<THREE.Group> {
@@ -72,6 +75,17 @@ export class PlayerCar {
 
       this.model.position.add(this.forwardDirection);
     }
+
+    // Follow terrain height
+    const terrainHeight = this.ground.getHeightAt(
+      this.model.position.x,
+      this.model.position.z
+    );
+
+    // Smoothly interpolate Y position to match terrain
+    // 0.5 offset keeps car slightly above ground (suspension)
+    const targetY = terrainHeight + 0.5;
+    this.model.position.y += (targetY - this.model.position.y) * 0.2;
   }
 
   getModel(): THREE.Group | null {
