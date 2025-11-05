@@ -185,24 +185,39 @@ export class PlayerCar {
 
     const wheelCandidates: THREE.Object3D[] = [];
 
-    // Strategy 1: Find meshes with "wheel" in the name (excludes "rim")
-    this.model.traverse((obj) => {
-      const nameLower = obj.name.toLowerCase();
-      if (nameLower.includes('wheel') && !nameLower.includes('rim')) {
-        wheelCandidates.push(obj);
-      }
-    });
+    // Strategy 1: Find front wheel meshes by name
+    const frontLeft = this.model.getObjectByName('front-left-wheel');
+    const frontRight = this.model.getObjectByName('front-right-wheel');
+    if (frontLeft) wheelCandidates.push(frontLeft);
+    if (frontRight) wheelCandidates.push(frontRight);
 
-    // Strategy 2: If we didn't find enough, try the rear wheel parent node
+    // Strategy 2: Find rear wheel meshes
+    // Look for the rear wheel parent node and get its mesh children
+    const rearParent = this.model.getObjectByName('Circle.015');
+    if (rearParent) {
+      const rearWheelMeshes: THREE.Object3D[] = [];
+      rearParent.traverse((child) => {
+        // Only get actual Mesh objects, not Groups
+        if (child instanceof THREE.Mesh && child.name.includes('wheels')) {
+          rearWheelMeshes.push(child);
+        }
+      });
+
+      // Add the first 2 rear wheel meshes found
+      wheelCandidates.push(...rearWheelMeshes.slice(0, 2));
+    }
+
+    // Strategy 3: Fallback - search entire model for any "wheel" meshes (excluding rims)
     if (wheelCandidates.length < 4) {
-      const rearParent = this.model.getObjectByName('Circle.015');
-      if (rearParent) {
-        rearParent.children.forEach((child) => {
-          if (child.type === 'Mesh' || (child as THREE.Mesh).isMesh) {
-            wheelCandidates.push(child);
+      console.log('Using fallback wheel detection...');
+      this.model.traverse((obj) => {
+        if (obj instanceof THREE.Mesh) {
+          const nameLower = obj.name.toLowerCase();
+          if (nameLower.includes('wheel') && !nameLower.includes('rim')) {
+            wheelCandidates.push(obj);
           }
-        });
-      }
+        }
+      });
     }
 
     // Remove duplicates and take up to 4 wheels
@@ -295,8 +310,10 @@ export class PlayerCar {
    * @returns Ground surface height (Y coordinate) at the wheel's X,Z position
    */
   private getGroundHeightAtWheel(wheel: THREE.Object3D, wheelIndex: number = 0): number {
-    // Get wheel's current world position
-    wheel.getWorldPosition(this.wheelWorldPos);
+    // Get wheel's bounding box center (this accounts for geometry offset)
+    // The mesh pivot might be at (0,0,0) but the actual wheel geometry is offset left/right
+    const bbox = new THREE.Box3().setFromObject(wheel);
+    bbox.getCenter(this.wheelWorldPos);
 
     // Set ray origin HIGH above this X,Z position
     // This guarantees the ray starts above terrain (even if car glitches underground)
