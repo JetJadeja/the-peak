@@ -163,7 +163,7 @@ export class TerrainFollower {
           ) / 2;
           
           const heightDiff = frontAvgHeight - backAvgHeight;
-          targetPitch = Math.atan2(heightDiff, dimensions.wheelbase);
+          targetPitch = -Math.atan2(heightDiff, dimensions.wheelbase);  // Negated to correct pitch direction
           
           // Clamp pitch to max angle
           targetPitch = THREE.MathUtils.clamp(
