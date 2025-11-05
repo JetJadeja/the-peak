@@ -5,7 +5,12 @@ import { WheelConfig, WheelInfo } from './types';
  * Default wheel detection configuration
  */
 const DEFAULT_CONFIG: Required<WheelConfig> = {
-  wheelNames: ['front-left-wheel', 'front-right-wheel'],
+  wheelNames: [
+    'front-left-wheel',
+    'front-right-wheel',
+    'back-left-wheel',
+    'back-right-wheel',
+  ],
   parentNames: ['Circle.015'],
   fallbackTerms: ['wheel', 'tire'],
   minWheels: 2,
