@@ -38,6 +38,10 @@ export class TerrainFollower {
   // Current rotation state for smooth interpolation
   private currentPitch: number = 0;
   private currentRoll: number = 0;
+  
+  // Temp objects for rotation calculations
+  private tempQuaternion: THREE.Quaternion = new THREE.Quaternion();
+  private tempEuler: THREE.Euler = new THREE.Euler();
 
   constructor(
     terrain: TerrainPhysics,
@@ -118,25 +122,7 @@ export class TerrainFollower {
       }
     }
 
-    // Calculate target Y position using average ground height
-    // This minimizes positioning error when the car is rotated
-    const avgGroundHeight = totalHeight / wheelCount;
-    const wheelBottomOffset = wheelSystem.getWheelBottomOffset();
-    let targetY = avgGroundHeight - wheelBottomOffset + this.options.heightOffset;
-
-    // Apply smoothing if enabled
-    if (this.options.heightSmoothing > 0) {
-      targetY = THREE.MathUtils.lerp(
-        model.position.y,
-        targetY,
-        this.options.heightSmoothing
-      );
-    }
-
-    // Update model position
-    model.position.y = targetY;
-
-    // Calculate and apply pitch/roll based on terrain slope
+    // Calculate pitch/roll based on terrain slope
     if (this.options.enableRotation && wheelCount >= 4) {
       // Get wheel indices by position
       const wheelIndices = wheelSystem.getWheelIndicesByPosition(model);
@@ -207,15 +193,76 @@ export class TerrainFollower {
           this.currentPitch = targetPitch;
           this.currentRoll = targetRoll;
         }
-
-        // Apply rotation with proper Euler order
-        // YXZ order: Y (steering) first, then X (roll around forward axis), then Z (pitch around lateral axis)
-        model.rotation.order = 'YXZ';
-        model.rotation.x = this.currentRoll;   // Roll around X-axis (forward axis, since car faces -X)
-        model.rotation.z = this.currentPitch;  // Pitch around Z-axis (lateral axis)
-        // model.rotation.y is already set by steering in car.ts
       }
     }
+
+    // Calculate wheel Y offsets after rotation
+    const wheelYOffsets = this.calculateRotatedWheelOffsets(
+      wheelSystem,
+      this.currentPitch,
+      this.currentRoll
+    );
+    
+    // Calculate car Y that places wheels at ground heights
+    let carYSum = 0;
+    for (let i = 0; i < wheelCount; i++) {
+      // For this wheel to be at groundHeight[i],
+      // car must be at: groundHeight - wheelYOffset
+      const requiredCarY = this.raycastResults[i] - wheelYOffsets[i];
+      carYSum += requiredCarY;
+    }
+    let targetY = carYSum / wheelCount;
+    
+    // Apply height smoothing
+    if (this.options.heightSmoothing > 0) {
+      targetY = THREE.MathUtils.lerp(
+        model.position.y,
+        targetY,
+        this.options.heightSmoothing
+      );
+    }
+
+    // Apply position and rotation together
+    model.position.y = targetY;
+    if (this.options.enableRotation) {
+      model.rotation.order = 'YXZ';
+      model.rotation.x = this.currentRoll;   // Roll around X-axis (forward axis, since car faces -X)
+      model.rotation.z = this.currentPitch;  // Pitch around Z-axis (lateral axis)
+      // model.rotation.y is already set by steering in car.ts
+    }
+  }
+
+  /**
+   * Calculate Y offsets for each wheel after applying pitch and roll rotations.
+   * @param wheelSystem - Wheel system with local positions
+   * @param pitch - Pitch angle in radians
+   * @param roll - Roll angle in radians  
+   * @returns Array of Y offsets for each wheel
+   */
+  private calculateRotatedWheelOffsets(
+    wheelSystem: WheelSystem,
+    pitch: number,
+    roll: number
+  ): number[] {
+    const wheelInfo = wheelSystem.getWheelInfo();
+    const offsets: number[] = [];
+    
+    // Create rotation with ONLY pitch and roll (no steering)
+    this.tempEuler.set(roll, 0, pitch, 'YXZ');
+    this.tempQuaternion.setFromEuler(this.tempEuler);
+    
+    for (let i = 0; i < wheelInfo.length; i++) {
+      // Get wheel's local position (relative to car center when level)
+      const localPos = wheelInfo[i].localPosition.clone();
+      
+      // Apply pitch/roll rotation to local position
+      localPos.applyQuaternion(this.tempQuaternion);
+      
+      // Store the Y component (vertical offset after rotation)
+      offsets[i] = localPos.y;
+    }
+    
+    return offsets;
   }
 
   /**

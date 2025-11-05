@@ -1,18 +1,18 @@
-import * as THREE from 'three';
-import { WheelConfig, WheelInfo } from './types';
+import * as THREE from "three";
+import { WheelConfig, WheelInfo } from "./types";
 
 /**
  * Default wheel detection configuration
  */
 const DEFAULT_CONFIG: Required<WheelConfig> = {
   wheelNames: [
-    'front-left-wheel',
-    'front-right-wheel',
-    'back-left-wheel',
-    'back-right-wheel',
+    "front-left-wheel",
+    "front-right-wheel",
+    "back-left-wheel",
+    "back-right-wheel",
   ],
-  parentNames: ['Circle.015'],
-  fallbackTerms: ['wheel', 'tire'],
+  parentNames: ["Circle.015"],
+  fallbackTerms: ["wheel", "tire"],
   minWheels: 2,
   maxWheels: 4,
 };
@@ -26,6 +26,7 @@ export class WheelSystem {
   private config: Required<WheelConfig>;
   private wheelBottomOffset: number = 0;
   private initialized: boolean = false;
+  private model: THREE.Group | null = null; // Store model reference for coordinate transforms
 
   // Reusable objects for calculations (object pool)
   private bbox: THREE.Box3 = new THREE.Box3();
@@ -34,7 +35,7 @@ export class WheelSystem {
 
   // Pre-allocated arrays to reduce GC
   private cachedWorldPositions: THREE.Vector3[] = [];
-  
+
   // Reusable objects for wheel classification
   private tempLocalPos: THREE.Vector3 = new THREE.Vector3();
   private centroid: THREE.Vector3 = new THREE.Vector3();
@@ -51,6 +52,7 @@ export class WheelSystem {
    */
   detectWheels(model: THREE.Group, wheelRadius: number): boolean {
     this.wheels = [];
+    this.model = model; // Store model reference for local position calculations
     const candidates: THREE.Object3D[] = [];
 
     // Strategy 1: Find wheels by exact name
@@ -69,7 +71,11 @@ export class WheelSystem {
           parent.traverse((child) => {
             if (child instanceof THREE.Mesh) {
               const nameLower = child.name.toLowerCase();
-              if (this.config.fallbackTerms.some(term => nameLower.includes(term))) {
+              if (
+                this.config.fallbackTerms.some((term) =>
+                  nameLower.includes(term)
+                )
+              ) {
                 candidates.push(child);
               }
             }
@@ -84,7 +90,7 @@ export class WheelSystem {
         if (obj instanceof THREE.Mesh) {
           const nameLower = obj.name.toLowerCase();
           for (const term of this.config.fallbackTerms) {
-            if (nameLower.includes(term) && !nameLower.includes('rim')) {
+            if (nameLower.includes(term) && !nameLower.includes("rim")) {
               candidates.push(obj);
               break;
             }
@@ -106,7 +112,7 @@ export class WheelSystem {
     }
 
     // Create wheel info objects
-    this.wheels = selectedWheels.map(wheel => ({
+    this.wheels = selectedWheels.map((wheel) => ({
       object: wheel,
       localPosition: this.getLocalPosition(wheel),
       radius: wheelRadius,
@@ -116,21 +122,33 @@ export class WheelSystem {
     this.calculateWheelBottomOffset();
 
     this.initialized = true;
-    console.log(`✓ WheelSystem: Detected ${this.wheels.length} wheels:`, 
-                this.wheels.map(w => w.object.name));
+    console.log(
+      `✓ WheelSystem: Detected ${this.wheels.length} wheels:`,
+      this.wheels.map((w) => w.object.name)
+    );
 
     return true;
   }
 
   /**
-   * Get the local position of a wheel relative to its root.
+   * Get the local position of a wheel relative to the car's center.
    * @param wheel - The wheel object
-   * @returns Local position vector
+   * @returns Local position vector in car's local space
    */
   private getLocalPosition(wheel: THREE.Object3D): THREE.Vector3 {
-    // Reuse tempPosition to reduce allocations
+    if (!this.model) {
+      console.error("WheelSystem: Model reference not set");
+      return new THREE.Vector3();
+    }
+
+    // Get wheel world position
     wheel.getWorldPosition(this.tempPosition);
-    return this.tempPosition.clone(); // Clone only when storing
+
+    // Transform to car's local space to get offset from car center
+    const localPos = this.tempPosition.clone();
+    this.model.worldToLocal(localPos);
+
+    return localPos;
   }
 
   /**
@@ -155,7 +173,9 @@ export class WheelSystem {
 
     console.log(
       `✓ WheelSystem: Bottom offset = ${this.wheelBottomOffset.toFixed(3)} ` +
-      `(avg center Y = ${avgWheelCenterY.toFixed(3)}, radius = ${wheelRadius})`
+        `(avg center Y = ${avgWheelCenterY.toFixed(
+          3
+        )}, radius = ${wheelRadius})`
     );
   }
 
@@ -167,12 +187,12 @@ export class WheelSystem {
   getWheelWorldPositions(output?: THREE.Vector3[]): THREE.Vector3[] {
     // Use provided output array or cached array to reduce allocations
     const positions = output || this.cachedWorldPositions;
-    
+
     // Ensure we have enough pre-allocated vectors
     while (positions.length < this.wheels.length) {
       positions.push(new THREE.Vector3());
     }
-    
+
     for (let i = 0; i < this.wheels.length; i++) {
       // Get bounding box center (accounts for geometry offset)
       this.bbox.setFromObject(this.wheels[i].object);
@@ -192,7 +212,7 @@ export class WheelSystem {
    * @returns Array of wheel THREE.Object3D instances
    */
   getWheels(): THREE.Object3D[] {
-    return this.wheels.map(w => w.object);
+    return this.wheels.map((w) => w.object);
   }
 
   /**
@@ -232,9 +252,9 @@ export class WheelSystem {
    * @param model - The model to inspect
    */
   private logAvailableObjects(model: THREE.Group): void {
-    console.log('WheelSystem: Available objects in model:');
+    console.log("WheelSystem: Available objects in model:");
     model.traverse((obj) => {
-      if (obj.type === 'Mesh' || obj.type === 'Group') {
+      if (obj.type === "Mesh" || obj.type === "Group") {
         console.log(`  - ${obj.name} (${obj.type})`);
       }
     });
@@ -253,12 +273,17 @@ export class WheelSystem {
     backRight: number | null;
   } {
     if (this.wheels.length < 2) {
-      return { frontLeft: null, frontRight: null, backLeft: null, backRight: null };
+      return {
+        frontLeft: null,
+        frontRight: null,
+        backLeft: null,
+        backRight: null,
+      };
     }
 
     // Get wheel world positions
     const worldPositions = this.getWheelWorldPositions();
-    
+
     // Calculate centroid (average position)
     this.centroid.set(0, 0, 0);
     for (let i = 0; i < worldPositions.length; i++) {
@@ -305,20 +330,20 @@ export class WheelSystem {
 
     // Sort to get the most extreme positions
     const frontLeft = classifications
-      .filter(w => w.isFront && w.isLeft)
-      .sort((a, b) => (a.localX - b.localX) || (b.localZ - a.localZ))[0];
-    
+      .filter((w) => w.isFront && w.isLeft)
+      .sort((a, b) => a.localX - b.localX || b.localZ - a.localZ)[0];
+
     const frontRight = classifications
-      .filter(w => w.isFront && !w.isLeft)
-      .sort((a, b) => (a.localX - b.localX) || (a.localZ - b.localZ))[0];
-    
+      .filter((w) => w.isFront && !w.isLeft)
+      .sort((a, b) => a.localX - b.localX || a.localZ - b.localZ)[0];
+
     const backLeft = classifications
-      .filter(w => !w.isFront && w.isLeft)
-      .sort((a, b) => (b.localX - a.localX) || (b.localZ - a.localZ))[0];
-    
+      .filter((w) => !w.isFront && w.isLeft)
+      .sort((a, b) => b.localX - a.localX || b.localZ - a.localZ)[0];
+
     const backRight = classifications
-      .filter(w => !w.isFront && !w.isLeft)
-      .sort((a, b) => (b.localX - a.localX) || (a.localZ - b.localZ))[0];
+      .filter((w) => !w.isFront && !w.isLeft)
+      .sort((a, b) => b.localX - a.localX || a.localZ - b.localZ)[0];
 
     if (frontLeft) result.frontLeft = frontLeft.index;
     if (frontRight) result.frontRight = frontRight.index;
@@ -333,7 +358,9 @@ export class WheelSystem {
    * @param model - The car model (needed for wheel classification)
    * @returns Object with wheelbase and trackWidth, or null if cannot be calculated
    */
-  getWheelDimensions(model: THREE.Group): { wheelbase: number; trackWidth: number } | null {
+  getWheelDimensions(
+    model: THREE.Group
+  ): { wheelbase: number; trackWidth: number } | null {
     if (this.wheels.length < 2) {
       return null;
     }
@@ -389,4 +416,3 @@ export class WheelSystem {
     this.initialized = false;
   }
 }
-
