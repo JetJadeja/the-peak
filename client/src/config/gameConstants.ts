@@ -19,7 +19,7 @@ export const TERRAIN_HEIGHT = 3.0; // Maximum hill height (steeper)
 export const TERRAIN_FREQUENCY = 0.1; // Wave frequency for hills
 
 // Car Configuration
-export const CAR_MODEL_PATH = '/models/cars/e36.glb';
+export const CAR_MODEL_PATH = "/models/cars/e36.glb";
 export const CAR_SPEED = 20;
 export const CAR_TURN_SPEED = 2;
 export const CAR_DECELERATION = 0.95;
@@ -37,10 +37,10 @@ export const CAMERA_LERP_SPEED = 0.1;
 export const CAMERA_LOOK_AT_OFFSET_Y = 1;
 
 // Input Configuration
-export const KEY_FORWARD = 'w';
-export const KEY_BACKWARD = 's';
-export const KEY_LEFT = 'a';
-export const KEY_RIGHT = 'd';
+export const KEY_FORWARD = "w";
+export const KEY_BACKWARD = "s";
+export const KEY_LEFT = "a";
+export const KEY_RIGHT = "d";
 
 // Network Configuration
 export const NETWORK_UPDATE_RATE = 20; // Updates per second

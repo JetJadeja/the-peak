@@ -1,7 +1,8 @@
-import * as THREE from 'three';
-import { InputHandler } from './input';
-import { AssetLoader } from '../utils/assetLoader';
-import { Ground } from '../track';
+import * as THREE from "three";
+import { InputHandler } from "./input";
+import { AssetLoader } from "../utils/assetLoader";
+import { TerrainPhysics } from "../track/terrainPhysics";
+import { TerrainRaycaster, WheelSystem, TerrainFollower } from "../physics";
 import {
   CAR_MODEL_PATH,
   CAR_SPEED,
@@ -12,12 +13,11 @@ import {
   WHEEL_RADIUS,
   RAYCAST_START_HEIGHT,
   DEBUG_SHOW_RAYCASTS,
-} from '../config/gameConstants';
+} from "../config/gameConstants";
 
 export class PlayerCar {
   private model: THREE.Group | null = null;
   private inputHandler: InputHandler;
-  private ground: Ground;
   private scene: THREE.Scene | null = null;
   private currentSpeed: number = 0;
   private isReady: boolean = false;
@@ -26,21 +26,22 @@ export class PlayerCar {
   private forwardDirection: THREE.Vector3 = new THREE.Vector3();
   private tempVector: THREE.Vector3 = new THREE.Vector3();
 
-  // Raycasting for terrain following
-  private raycaster: THREE.Raycaster = new THREE.Raycaster();
-  private wheelMeshes: THREE.Object3D[] = [];
-  private wheelBottomOffset: number = 0;
-  private rayOrigin: THREE.Vector3 = new THREE.Vector3();
-  private readonly rayDirection: THREE.Vector3 = new THREE.Vector3(0, -1, 0);
-  private wheelWorldPos: THREE.Vector3 = new THREE.Vector3();
+  // Physics systems
+  private wheelSystem: WheelSystem;
+  private terrainFollower: TerrainFollower;
 
-  // Debug visualization
-  private debugArrows: THREE.ArrowHelper[] = [];
-
-  constructor(inputHandler: InputHandler, ground: Ground, scene?: THREE.Scene) {
+  constructor(
+    inputHandler: InputHandler,
+    terrainPhysics: TerrainPhysics,
+    scene?: THREE.Scene
+  ) {
     this.inputHandler = inputHandler;
-    this.ground = ground;
     this.scene = scene || null;
+
+    // Initialize physics systems
+    const raycaster = new TerrainRaycaster(RAYCAST_START_HEIGHT);
+    this.wheelSystem = new WheelSystem();
+    this.terrainFollower = new TerrainFollower(terrainPhysics, raycaster);
   }
 
   async load(): Promise<THREE.Group> {
@@ -64,15 +65,34 @@ export class PlayerCar {
         }
       });
 
-      // Find wheel meshes for raycasting terrain following
-      this.findWheelMeshes();
+      // Detect wheels using the wheel system
+      const wheelsDetected = this.wheelSystem.detectWheels(
+        this.model,
+        WHEEL_RADIUS
+      );
+
+      if (!wheelsDetected) {
+        console.warn(
+          "PlayerCar: Failed to detect wheels, using fallback positioning"
+        );
+      }
+
+      // Enable debug visualization if configured
+      if (DEBUG_SHOW_RAYCASTS && this.scene && wheelsDetected) {
+        this.terrainFollower.enableDebugVisualization(
+          this.scene,
+          this.wheelSystem.getWheelCount()
+        );
+      }
 
       this.isReady = true;
 
       return this.model;
     } catch (error) {
-      console.error('Failed to load car model:', error);
-      throw new Error('Car model loading failed. Please check the model path and try again.');
+      console.error("Failed to load car model:", error);
+      throw new Error(
+        "Car model loading failed. Please check the model path and try again."
+      );
     }
   }
 
@@ -104,28 +124,12 @@ export class PlayerCar {
       this.model.position.add(this.forwardDirection);
     }
 
-    // Follow terrain height using 4-wheel raycasting (Phase 1: average height only)
-    if (this.wheelMeshes.length > 0) {
-      // Raycast from each wheel to find ground height at that wheel's X,Z position
-      let totalGroundHeight = 0;
-      this.wheelMeshes.forEach((wheel, index) => {
-        totalGroundHeight += this.getGroundHeightAtWheel(wheel, index);
-      });
-
-      // Calculate average ground height across all wheels
-      const avgGroundHeight = totalGroundHeight / this.wheelMeshes.length;
-
-      // Set car Y position so wheel bottoms touch the ground
-      // Formula: car.y = averageGroundHeight - wheelBottomOffset
-      this.model.position.y = avgGroundHeight - this.wheelBottomOffset;
+    // Follow terrain using the terrain follower system
+    if (this.wheelSystem.isInitialized()) {
+      this.terrainFollower.update(this.model, this.wheelSystem);
     } else {
-      // Fallback: use formula-based approach if wheels weren't found
-      // This shouldn't happen - findWheelMeshes() will have logged an error
-      const terrainHeight = this.ground.getHeightAt(
-        this.model.position.x,
-        this.model.position.z
-      );
-      this.model.position.y = terrainHeight + 0.5;
+      // Fallback: simple terrain following without wheels
+      this.terrainFollower.updateSimple(this.model, 0.5);
     }
   }
 
@@ -173,218 +177,12 @@ export class PlayerCar {
     return this.isReady;
   }
 
-  /**
-   * Find wheel meshes in the loaded car model for raycasting.
-   * Searches for objects with "wheel" in their name and stores references.
-   */
-  private findWheelMeshes(): void {
-    if (!this.model) {
-      console.error('Cannot find wheel meshes: model not loaded');
-      return;
-    }
-
-    const wheelCandidates: THREE.Object3D[] = [];
-
-    // Strategy 1: Find front wheel meshes by name
-    const frontLeft = this.model.getObjectByName('front-left-wheel');
-    const frontRight = this.model.getObjectByName('front-right-wheel');
-    if (frontLeft) wheelCandidates.push(frontLeft);
-    if (frontRight) wheelCandidates.push(frontRight);
-
-    // Strategy 2: Find rear wheel meshes
-    // Look for the rear wheel parent node and get its mesh children
-    const rearParent = this.model.getObjectByName('Circle.015');
-    if (rearParent) {
-      const rearWheelMeshes: THREE.Object3D[] = [];
-      rearParent.traverse((child) => {
-        // Only get actual Mesh objects, not Groups
-        if (child instanceof THREE.Mesh && child.name.includes('wheels')) {
-          rearWheelMeshes.push(child);
-        }
-      });
-
-      // Add the first 2 rear wheel meshes found
-      wheelCandidates.push(...rearWheelMeshes.slice(0, 2));
-    }
-
-    // Strategy 3: Fallback - search entire model for any "wheel" meshes (excluding rims)
-    if (wheelCandidates.length < 4) {
-      console.log('Using fallback wheel detection...');
-      this.model.traverse((obj) => {
-        if (obj instanceof THREE.Mesh) {
-          const nameLower = obj.name.toLowerCase();
-          if (nameLower.includes('wheel') && !nameLower.includes('rim')) {
-            wheelCandidates.push(obj);
-          }
-        }
-      });
-    }
-
-    // Remove duplicates and take up to 4 wheels
-    const uniqueWheels = Array.from(new Set(wheelCandidates));
-    this.wheelMeshes = uniqueWheels.slice(0, 4);
-
-    if (this.wheelMeshes.length < 2) {
-      console.error(`Found only ${this.wheelMeshes.length} wheel mesh(es). Need at least 2.`);
-      console.log('Available objects in car model:');
-      this.model.traverse((obj) => {
-        if (obj.type === 'Mesh' || obj.type === 'Group') {
-          console.log(`  - ${obj.name} (${obj.type})`);
-        }
-      });
-      return;
-    }
-
-    console.log(`✓ Found ${this.wheelMeshes.length} wheel meshes:`, this.wheelMeshes.map(w => w.name));
-    this.calculateWheelBottomOffset();
-
-    // Create debug visualization lines if enabled
-    if (DEBUG_SHOW_RAYCASTS) {
-      this.createDebugLines();
-    }
-  }
-
-  /**
-   * Calculate the offset from car center to wheel bottom contact points.
-   * This is used to position the car correctly when raycasting finds ground height.
-   */
-  private calculateWheelBottomOffset(): void {
-    if (this.wheelMeshes.length === 0) return;
-
-    // Calculate average Y position of wheel centers using bounding boxes
-    let sumY = 0;
-    const bbox = new THREE.Box3();
-    const center = new THREE.Vector3();
-
-    this.wheelMeshes.forEach((wheel) => {
-      bbox.setFromObject(wheel);
-      bbox.getCenter(center);
-      sumY += center.y;
-    });
-
-    const avgWheelCenterY = sumY / this.wheelMeshes.length;
-
-    // Bottom of wheel = center - radius
-    this.wheelBottomOffset = avgWheelCenterY - WHEEL_RADIUS;
-
-    console.log(
-      `✓ Wheel bottom offset: ${this.wheelBottomOffset.toFixed(3)} ` +
-      `(centers at y=${avgWheelCenterY.toFixed(3)}, radius=${WHEEL_RADIUS})`
-    );
-  }
-
-  /**
-   * Create debug visualization arrows for raycasting.
-   * One arrow per wheel showing the ray from start height down to ground.
-   */
-  private createDebugLines(): void {
-    if (!this.scene) {
-      console.warn('Cannot create debug lines: scene not provided to PlayerCar');
-      return;
-    }
-
-    const scene = this.scene; // Store reference for forEach callback
-
-    // Create one arrow per wheel
-    this.wheelMeshes.forEach(() => {
-      // ArrowHelper(direction, origin, length, color, headLength, headWidth)
-      const arrow = new THREE.ArrowHelper(
-        new THREE.Vector3(0, -1, 0), // direction: straight down
-        new THREE.Vector3(0, 0, 0),  // origin: will be updated each frame
-        1,                            // length: will be updated each frame
-        0xff0000,                     // bright red
-        0.5,                          // head length
-        0.3                           // head width
-      );
-
-      this.debugArrows.push(arrow);
-      scene.add(arrow);
-    });
-
-    console.log(`✓ Created ${this.debugArrows.length} debug raycast arrows`);
-  }
-
-  /**
-   * Raycast downward from a wheel's world position to find terrain height.
-   * @param wheel - The wheel object to raycast from
-   * @returns Ground surface height (Y coordinate) at the wheel's X,Z position
-   */
-  private getGroundHeightAtWheel(wheel: THREE.Object3D, wheelIndex: number = 0): number {
-    // Get wheel's bounding box center (this accounts for geometry offset)
-    // The mesh pivot might be at (0,0,0) but the actual wheel geometry is offset left/right
-    const bbox = new THREE.Box3().setFromObject(wheel);
-    bbox.getCenter(this.wheelWorldPos);
-
-    // Set ray origin HIGH above this X,Z position
-    // This guarantees the ray starts above terrain (even if car glitches underground)
-    this.rayOrigin.set(
-      this.wheelWorldPos.x,
-      RAYCAST_START_HEIGHT,
-      this.wheelWorldPos.z
-    );
-
-    // Cast ray straight down
-    this.raycaster.set(this.rayOrigin, this.rayDirection);
-    const intersects = this.raycaster.intersectObject(this.ground.getMesh());
-
-    let groundHeight = 0;
-
-    if (intersects.length > 0) {
-      // Return Y coordinate of ground surface at this wheel position
-      groundHeight = intersects[0].point.y;
-
-      // Update debug arrow if enabled
-      if (DEBUG_SHOW_RAYCASTS && this.debugArrows[wheelIndex]) {
-        this.updateDebugArrow(wheelIndex, this.rayOrigin, intersects[0].point);
-      }
-    } else {
-      // Fallback: if raycast misses (e.g., car drove off terrain edge)
-      console.warn('Raycast missed terrain at wheel position:', {
-        x: this.wheelWorldPos.x,
-        z: this.wheelWorldPos.z,
-      });
-
-      // Update debug arrow to show it missed (draw to y=0)
-      if (DEBUG_SHOW_RAYCASTS && this.debugArrows[wheelIndex]) {
-        const missPoint = new THREE.Vector3(this.wheelWorldPos.x, 0, this.wheelWorldPos.z);
-        this.updateDebugArrow(wheelIndex, this.rayOrigin, missPoint);
-      }
-    }
-
-    return groundHeight;
-  }
-
-  /**
-   * Update a debug arrow to show the raycast from start to end point.
-   * @param arrowIndex - Index of the debug arrow to update
-   * @param start - Ray start position (world space)
-   * @param end - Ray end position (world space)
-   */
-  private updateDebugArrow(arrowIndex: number, start: THREE.Vector3, end: THREE.Vector3): void {
-    const arrow = this.debugArrows[arrowIndex];
-    if (!arrow) return;
-
-    // Set arrow origin to start position
-    arrow.position.copy(start);
-
-    // Calculate direction (normalized) and length
-    const direction = new THREE.Vector3().subVectors(end, start).normalize();
-    const length = start.distanceTo(end);
-
-    // Update arrow direction and length
-    arrow.setDirection(direction);
-    arrow.setLength(length, 0.5, 0.3); // length, headLength, headWidth
-  }
-
   dispose(): void {
-    // Clean up debug arrows
-    this.debugArrows.forEach((arrow) => {
-      if (this.scene) {
-        this.scene.remove(arrow);
-      }
-      arrow.dispose();
-    });
-    this.debugArrows = [];
+    // Clean up terrain follower (includes debug visualization)
+    this.terrainFollower.dispose();
+
+    // Reset wheel system
+    this.wheelSystem.reset();
 
     if (this.model) {
       this.model.traverse((child) => {

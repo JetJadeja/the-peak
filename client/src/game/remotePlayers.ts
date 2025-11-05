@@ -2,7 +2,9 @@ import * as THREE from 'three';
 import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import { Player } from '@the-peak/shared';
 import { AssetLoader } from '../utils/assetLoader';
-import { CAR_MODEL_PATH, REMOTE_PLAYER_LERP_SPEED } from '../config/gameConstants';
+import { TerrainPhysics } from '../track/terrainPhysics';
+import { TerrainRaycaster, TerrainFollower } from '../physics';
+import { CAR_MODEL_PATH, REMOTE_PLAYER_LERP_SPEED, RAYCAST_START_HEIGHT } from '../config/gameConstants';
 
 interface RemotePlayer {
   model: THREE.Group;
@@ -10,6 +12,7 @@ interface RemotePlayer {
   data: Player;
   targetPosition: THREE.Vector3;
   targetRotation: THREE.Euler;
+  terrainFollower: TerrainFollower;
 }
 
 export class RemotePlayersManager {
@@ -18,9 +21,11 @@ export class RemotePlayersManager {
   private labelRenderer: CSS2DRenderer;
   private carTemplate: THREE.Group | null = null;
   private handleResize: () => void;
+  private terrainPhysics: TerrainPhysics | null = null;
 
-  constructor(scene: THREE.Scene, container: HTMLElement) {
+  constructor(scene: THREE.Scene, container: HTMLElement, terrainPhysics?: TerrainPhysics) {
     this.scene = scene;
+    this.terrainPhysics = terrainPhysics || null;
     this.handleResize = this.onWindowResize.bind(this);
     this.labelRenderer = this.createLabelRenderer(container);
     this.loadCarTemplate();
@@ -124,12 +129,32 @@ export class RemotePlayersManager {
       player.rotation.z
     );
 
+    // Create terrain follower for this remote player
+    let terrainFollower: TerrainFollower;
+    if (this.terrainPhysics) {
+      const raycaster = new TerrainRaycaster(RAYCAST_START_HEIGHT);
+      terrainFollower = new TerrainFollower(this.terrainPhysics, raycaster);
+    } else {
+      // Fallback if terrain physics not provided
+      const raycaster = new TerrainRaycaster(RAYCAST_START_HEIGHT);
+      // This will be a no-op follower, but prevents crashes
+      terrainFollower = new TerrainFollower(
+        { 
+          getHeightAt: () => 0, 
+          getRaycastMesh: () => new THREE.Object3D(),
+          isWithinBounds: () => true
+        },
+        raycaster
+      );
+    }
+
     this.players.set(player.id, {
       model,
       label,
       data: player,
       targetPosition,
       targetRotation,
+      terrainFollower,
     });
 
     console.log(`Added remote player: ${player.username} (${player.id})`);
@@ -138,6 +163,9 @@ export class RemotePlayersManager {
   removePlayer(playerId: string): void {
     const player = this.players.get(playerId);
     if (!player) return;
+
+    // Dispose terrain follower
+    player.terrainFollower.dispose();
 
     // Remove label from model first
     player.model.remove(player.label);
@@ -183,8 +211,30 @@ export class RemotePlayersManager {
   update(): void {
     // Interpolate all remote players towards their target positions
     this.players.forEach((player) => {
-      // Lerp position
-      player.model.position.lerp(player.targetPosition, REMOTE_PLAYER_LERP_SPEED);
+      // Lerp XZ position (horizontal movement)
+      player.model.position.x = THREE.MathUtils.lerp(
+        player.model.position.x,
+        player.targetPosition.x,
+        REMOTE_PLAYER_LERP_SPEED
+      );
+      player.model.position.z = THREE.MathUtils.lerp(
+        player.model.position.z,
+        player.targetPosition.z,
+        REMOTE_PLAYER_LERP_SPEED
+      );
+
+      // Use terrain follower for Y position (height)
+      // This ensures remote players follow terrain properly
+      if (this.terrainPhysics) {
+        player.terrainFollower.updateSimple(player.model, 0);
+      } else {
+        // Fallback to lerping Y if no terrain physics
+        player.model.position.y = THREE.MathUtils.lerp(
+          player.model.position.y,
+          player.targetPosition.y,
+          REMOTE_PLAYER_LERP_SPEED
+        );
+      }
 
       // Lerp rotation
       player.model.rotation.x = THREE.MathUtils.lerp(

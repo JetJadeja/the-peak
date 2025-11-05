@@ -1,11 +1,11 @@
 import { createScene } from './scene/setup';
-import { Ground } from './track';
+import { Ground, TerrainPhysics } from './track';
 import { PlayerCar, CameraController, InputHandler } from './player';
 import { AssetLoader } from './utils/assetLoader';
 import { NameInputUI, ErrorDisplay } from './ui';
 import { NetworkManager } from './network';
 import { RemotePlayersManager } from './game';
-import { NETWORK_UPDATE_INTERVAL } from './config/gameConstants';
+import { NETWORK_UPDATE_INTERVAL, GROUND_SIZE } from './config/gameConstants';
 import './style.css';
 
 async function init() {
@@ -34,11 +34,14 @@ async function init() {
   // Initialize ground
   const ground = new Ground(scene);
 
+  // Initialize terrain physics
+  const terrainPhysics = new TerrainPhysics(ground, GROUND_SIZE);
+
   // Initialize input handler
   const inputHandler = new InputHandler();
 
   // Initialize player car (pass scene for debug visualization)
-  const playerCar = new PlayerCar(inputHandler, ground, scene);
+  const playerCar = new PlayerCar(inputHandler, terrainPhysics, scene);
 
   // Load car model and add to scene
   try {
@@ -56,7 +59,7 @@ async function init() {
 
   // Initialize multiplayer components
   const networkManager = new NetworkManager();
-  const remotePlayersManager = new RemotePlayersManager(scene, appContainer);
+  const remotePlayersManager = new RemotePlayersManager(scene, appContainer, terrainPhysics);
 
   // Set up network event handlers
   networkManager.setOnError((error) => {
