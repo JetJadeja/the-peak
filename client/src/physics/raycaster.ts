@@ -48,10 +48,9 @@ export class TerrainRaycaster {
 
     // Configure and cast the ray
     this.raycaster.set(this.rayOrigin, direction);
-
-    if (options?.maxDistance) {
-      this.raycaster.far = options.maxDistance;
-    }
+    
+    // Always set far distance to avoid state contamination from previous calls
+    this.raycaster.far = options?.maxDistance ?? Infinity;
 
     const intersects = this.raycaster.intersectObject(
       target.getRaycastMesh(),
