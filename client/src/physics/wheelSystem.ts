@@ -34,6 +34,10 @@ export class WheelSystem {
 
   // Pre-allocated arrays to reduce GC
   private cachedWorldPositions: THREE.Vector3[] = [];
+  
+  // Reusable objects for wheel classification
+  private tempLocalPos: THREE.Vector3 = new THREE.Vector3();
+  private centroid: THREE.Vector3 = new THREE.Vector3();
 
   constructor(config?: WheelConfig) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -234,6 +238,146 @@ export class WheelSystem {
         console.log(`  - ${obj.name} (${obj.type})`);
       }
     });
+  }
+
+  /**
+   * Classify wheels by their position (front/back, left/right).
+   * Returns indices into the wheels array for each position.
+   * @param model - The car model (needed for world-to-local transformation)
+   * @returns Object with indices for each wheel position, or null if not found
+   */
+  getWheelIndicesByPosition(model: THREE.Group): {
+    frontLeft: number | null;
+    frontRight: number | null;
+    backLeft: number | null;
+    backRight: number | null;
+  } {
+    if (this.wheels.length < 2) {
+      return { frontLeft: null, frontRight: null, backLeft: null, backRight: null };
+    }
+
+    // Get wheel world positions
+    const worldPositions = this.getWheelWorldPositions();
+    
+    // Calculate centroid (average position)
+    this.centroid.set(0, 0, 0);
+    for (let i = 0; i < worldPositions.length; i++) {
+      this.centroid.add(worldPositions[i]);
+    }
+    this.centroid.divideScalar(worldPositions.length);
+
+    // Transform to local space and classify each wheel
+    const classifications: Array<{
+      index: number;
+      isFront: boolean;
+      isLeft: boolean;
+      localX: number;
+      localZ: number;
+    }> = [];
+
+    for (let i = 0; i < worldPositions.length; i++) {
+      // Transform world position to car's local space
+      this.tempLocalPos.copy(worldPositions[i]);
+      model.worldToLocal(this.tempLocalPos);
+
+      // Car faces -X direction, so:
+      // - Negative X = front, Positive X = back
+      // - Positive Z = left, Negative Z = right
+      const isFront = this.tempLocalPos.x < 0;
+      const isLeft = this.tempLocalPos.z > 0;
+
+      classifications.push({
+        index: i,
+        isFront,
+        isLeft,
+        localX: this.tempLocalPos.x,
+        localZ: this.tempLocalPos.z,
+      });
+    }
+
+    // Find wheels for each position
+    const result = {
+      frontLeft: null as number | null,
+      frontRight: null as number | null,
+      backLeft: null as number | null,
+      backRight: null as number | null,
+    };
+
+    // Sort to get the most extreme positions
+    const frontLeft = classifications
+      .filter(w => w.isFront && w.isLeft)
+      .sort((a, b) => (a.localX - b.localX) || (b.localZ - a.localZ))[0];
+    
+    const frontRight = classifications
+      .filter(w => w.isFront && !w.isLeft)
+      .sort((a, b) => (a.localX - b.localX) || (a.localZ - b.localZ))[0];
+    
+    const backLeft = classifications
+      .filter(w => !w.isFront && w.isLeft)
+      .sort((a, b) => (b.localX - a.localX) || (b.localZ - a.localZ))[0];
+    
+    const backRight = classifications
+      .filter(w => !w.isFront && !w.isLeft)
+      .sort((a, b) => (b.localX - a.localX) || (a.localZ - b.localZ))[0];
+
+    if (frontLeft) result.frontLeft = frontLeft.index;
+    if (frontRight) result.frontRight = frontRight.index;
+    if (backLeft) result.backLeft = backLeft.index;
+    if (backRight) result.backRight = backRight.index;
+
+    return result;
+  }
+
+  /**
+   * Calculate wheelbase (front-to-back distance) and track width (left-to-right distance).
+   * @param model - The car model (needed for wheel classification)
+   * @returns Object with wheelbase and trackWidth, or null if cannot be calculated
+   */
+  getWheelDimensions(model: THREE.Group): { wheelbase: number; trackWidth: number } | null {
+    if (this.wheels.length < 2) {
+      return null;
+    }
+
+    const indices = this.getWheelIndicesByPosition(model);
+    const positions = this.getWheelWorldPositions();
+
+    // Calculate wheelbase (front to back distance)
+    let wheelbase = 0;
+    if (indices.frontLeft !== null && indices.backLeft !== null) {
+      const front = positions[indices.frontLeft];
+      const back = positions[indices.backLeft];
+      wheelbase = Math.sqrt(
+        Math.pow(front.x - back.x, 2) + Math.pow(front.z - back.z, 2)
+      );
+    } else if (indices.frontRight !== null && indices.backRight !== null) {
+      const front = positions[indices.frontRight];
+      const back = positions[indices.backRight];
+      wheelbase = Math.sqrt(
+        Math.pow(front.x - back.x, 2) + Math.pow(front.z - back.z, 2)
+      );
+    }
+
+    // Calculate track width (left to right distance)
+    let trackWidth = 0;
+    if (indices.frontLeft !== null && indices.frontRight !== null) {
+      const left = positions[indices.frontLeft];
+      const right = positions[indices.frontRight];
+      trackWidth = Math.sqrt(
+        Math.pow(left.x - right.x, 2) + Math.pow(left.z - right.z, 2)
+      );
+    } else if (indices.backLeft !== null && indices.backRight !== null) {
+      const left = positions[indices.backLeft];
+      const right = positions[indices.backRight];
+      trackWidth = Math.sqrt(
+        Math.pow(left.x - right.x, 2) + Math.pow(left.z - right.z, 2)
+      );
+    }
+
+    if (wheelbase === 0 && trackWidth === 0) {
+      return null;
+    }
+
+    return { wheelbase, trackWidth };
   }
 
   /**

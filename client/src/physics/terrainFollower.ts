@@ -12,6 +12,8 @@ const DEFAULT_OPTIONS: Required<TerrainFollowOptions> = {
   heightSmoothing: 0,    // No smoothing by default
   rotationSmoothing: 0,  // No smoothing by default
   heightOffset: 0,       // No additional offset
+  maxPitchAngle: Math.PI / 4, // 45 degrees max
+  maxRollAngle: Math.PI / 3,  // 60 degrees max
 };
 
 /**
@@ -32,6 +34,10 @@ export class TerrainFollower {
   // Pre-allocated vectors for raycasting
   private rayStart: THREE.Vector3 = new THREE.Vector3();
   private rayEnd: THREE.Vector3 = new THREE.Vector3();
+  
+  // Current rotation state for smooth interpolation
+  private currentPitch: number = 0;
+  private currentRoll: number = 0;
 
   constructor(
     terrain: TerrainPhysics,
@@ -86,6 +92,8 @@ export class TerrainFollower {
 
     // Raycast from each wheel to find ground heights
     let totalHeight = 0;
+    let minGroundHeight = Infinity;
+    let maxGroundHeight = -Infinity;
     
     for (let i = 0; i < wheelCount; i++) {
       const wheelPos = this.wheelPositions[i];
@@ -98,6 +106,8 @@ export class TerrainFollower {
       const groundHeight = result.hit ? result.point.y : 0;
       this.raycastResults[i] = groundHeight;
       totalHeight += groundHeight;
+      minGroundHeight = Math.min(minGroundHeight, groundHeight);
+      maxGroundHeight = Math.max(maxGroundHeight, groundHeight);
 
       // Update debug visualization if enabled
       if (this.debugger && result.hit) {
@@ -108,10 +118,9 @@ export class TerrainFollower {
       }
     }
 
-    // Calculate average ground height
+    // Calculate target Y position using average ground height
+    // This minimizes positioning error when the car is rotated
     const avgGroundHeight = totalHeight / wheelCount;
-
-    // Calculate target Y position
     const wheelBottomOffset = wheelSystem.getWheelBottomOffset();
     let targetY = avgGroundHeight - wheelBottomOffset + this.options.heightOffset;
 
@@ -127,12 +136,85 @@ export class TerrainFollower {
     // Update model position
     model.position.y = targetY;
 
-    // Future: Implement rotation based on terrain slope
-    // This would calculate pitch and roll from wheel height differences
-    if (this.options.enableRotation) {
-      // TODO: Calculate and apply pitch/roll based on wheel heights
-      // Front-back difference -> pitch
-      // Left-right difference -> roll
+    // Calculate and apply pitch/roll based on terrain slope
+    if (this.options.enableRotation && wheelCount >= 4) {
+      // Get wheel indices by position
+      const wheelIndices = wheelSystem.getWheelIndicesByPosition(model);
+      
+      // Get wheel dimensions for angle calculation
+      const dimensions = wheelSystem.getWheelDimensions(model);
+      
+      if (dimensions && dimensions.wheelbase > 0 && dimensions.trackWidth > 0) {
+        let targetPitch = 0;
+        let targetRoll = 0;
+
+        // Calculate pitch (front-back tilt) if we have front and back wheels
+        if (wheelIndices.frontLeft !== null && wheelIndices.frontRight !== null &&
+            wheelIndices.backLeft !== null && wheelIndices.backRight !== null) {
+          
+          const frontAvgHeight = (
+            this.raycastResults[wheelIndices.frontLeft] + 
+            this.raycastResults[wheelIndices.frontRight]
+          ) / 2;
+          
+          const backAvgHeight = (
+            this.raycastResults[wheelIndices.backLeft] + 
+            this.raycastResults[wheelIndices.backRight]
+          ) / 2;
+          
+          const heightDiff = frontAvgHeight - backAvgHeight;
+          targetPitch = Math.atan2(heightDiff, dimensions.wheelbase);
+          
+          // Clamp pitch to max angle
+          targetPitch = THREE.MathUtils.clamp(
+            targetPitch,
+            -this.options.maxPitchAngle,
+            this.options.maxPitchAngle
+          );
+        }
+
+        // Calculate roll (left-right tilt) if we have left and right wheels
+        if (wheelIndices.frontLeft !== null && wheelIndices.backLeft !== null &&
+            wheelIndices.frontRight !== null && wheelIndices.backRight !== null) {
+          
+          const leftAvgHeight = (
+            this.raycastResults[wheelIndices.frontLeft] + 
+            this.raycastResults[wheelIndices.backLeft]
+          ) / 2;
+          
+          const rightAvgHeight = (
+            this.raycastResults[wheelIndices.frontRight] + 
+            this.raycastResults[wheelIndices.backRight]
+          ) / 2;
+          
+          const heightDiff = rightAvgHeight - leftAvgHeight;  // Fixed: swapped to correct roll direction
+          targetRoll = Math.atan2(heightDiff, dimensions.trackWidth);
+          
+          // Clamp roll to max angle
+          targetRoll = THREE.MathUtils.clamp(
+            targetRoll,
+            -this.options.maxRollAngle,
+            this.options.maxRollAngle
+          );
+        }
+
+        // Apply smooth interpolation
+        const smoothing = this.options.rotationSmoothing;
+        if (smoothing > 0) {
+          this.currentPitch = THREE.MathUtils.lerp(this.currentPitch, targetPitch, smoothing);
+          this.currentRoll = THREE.MathUtils.lerp(this.currentRoll, targetRoll, smoothing);
+        } else {
+          this.currentPitch = targetPitch;
+          this.currentRoll = targetRoll;
+        }
+
+        // Apply rotation with proper Euler order
+        // YXZ order: Y (steering) first, then X (roll around forward axis), then Z (pitch around lateral axis)
+        model.rotation.order = 'YXZ';
+        model.rotation.x = this.currentRoll;   // Roll around X-axis (forward axis, since car faces -X)
+        model.rotation.z = this.currentPitch;  // Pitch around Z-axis (lateral axis)
+        // model.rotation.y is already set by steering in car.ts
+      }
     }
   }
 

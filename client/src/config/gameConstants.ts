@@ -31,6 +31,13 @@ export const WHEEL_RADIUS = 0.33; // Wheel radius in world units (from E36 model
 export const RAYCAST_START_HEIGHT = 50; // Height to start raycasts from (must be above max terrain)
 export const DEBUG_SHOW_RAYCASTS = true; // Show visual debug lines for raycasts
 
+// Terrain Following Configuration
+export const TERRAIN_FOLLOW_ENABLE_ROTATION = true; // Enable pitch/roll based on terrain slope
+export const TERRAIN_FOLLOW_ROTATION_SMOOTHING = 0.15; // 0 = instant, 1 = very slow
+export const TERRAIN_FOLLOW_HEIGHT_SMOOTHING = 0.25; // Smoothing for height transitions
+export const MAX_PITCH_ANGLE = Math.PI / 4; // 45 degrees max pitch
+export const MAX_ROLL_ANGLE = Math.PI / 3; // 60 degrees max roll
+
 // Camera Configuration
 export const CAMERA_OFFSET = { x: 8, y: 3, z: 0 };
 export const CAMERA_LERP_SPEED = 0.1;

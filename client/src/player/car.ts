@@ -13,6 +13,11 @@ import {
   WHEEL_RADIUS,
   RAYCAST_START_HEIGHT,
   DEBUG_SHOW_RAYCASTS,
+  TERRAIN_FOLLOW_ENABLE_ROTATION,
+  TERRAIN_FOLLOW_ROTATION_SMOOTHING,
+  TERRAIN_FOLLOW_HEIGHT_SMOOTHING,
+  MAX_PITCH_ANGLE,
+  MAX_ROLL_ANGLE,
 } from "../config/gameConstants";
 
 export class PlayerCar {
@@ -41,7 +46,14 @@ export class PlayerCar {
     // Initialize physics systems
     const raycaster = new TerrainRaycaster(RAYCAST_START_HEIGHT);
     this.wheelSystem = new WheelSystem();
-    this.terrainFollower = new TerrainFollower(terrainPhysics, raycaster);
+    this.terrainFollower = new TerrainFollower(terrainPhysics, raycaster, {
+      enableRotation: TERRAIN_FOLLOW_ENABLE_ROTATION,
+      rotationSmoothing: TERRAIN_FOLLOW_ROTATION_SMOOTHING,
+      heightSmoothing: TERRAIN_FOLLOW_HEIGHT_SMOOTHING,
+      heightOffset: 0,
+      maxPitchAngle: MAX_PITCH_ANGLE,
+      maxRollAngle: MAX_ROLL_ANGLE,
+    });
   }
 
   async load(): Promise<THREE.Group> {

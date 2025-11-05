@@ -101,4 +101,8 @@ export interface TerrainFollowOptions {
   rotationSmoothing?: number;
   /** Offset to add to calculated height */
   heightOffset?: number;
+  /** Maximum pitch angle in radians (default: Math.PI/4 = 45 degrees) */
+  maxPitchAngle?: number;
+  /** Maximum roll angle in radians (default: Math.PI/3 = 60 degrees) */
+  maxRollAngle?: number;
 }
