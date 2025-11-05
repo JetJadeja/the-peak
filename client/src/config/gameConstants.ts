@@ -26,6 +26,11 @@ export const CAR_DECELERATION = 0.95;
 export const CAR_MIN_SPEED_THRESHOLD = 0.1;
 export const CAR_INITIAL_POSITION = { x: 0, y: 0, z: 0 };
 
+// Raycasting Configuration (for terrain following)
+export const WHEEL_RADIUS = 0.33; // Wheel radius in world units (from E36 model analysis)
+export const RAYCAST_START_HEIGHT = 50; // Height to start raycasts from (must be above max terrain)
+export const DEBUG_SHOW_RAYCASTS = true; // Show visual debug lines for raycasts
+
 // Camera Configuration
 export const CAMERA_OFFSET = { x: 8, y: 3, z: 0 };
 export const CAMERA_LERP_SPEED = 0.1;
