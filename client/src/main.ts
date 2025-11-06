@@ -1,11 +1,12 @@
 import { createScene } from './scene/setup';
-import { Ground, TerrainPhysics } from './track';
+import { PocGround } from './track/pocGround';
+import { TerrainPhysics } from './track';
 import { PlayerCar, CameraController, InputHandler } from './player';
 import { AssetLoader } from './utils/assetLoader';
 import { NameInputUI, ErrorDisplay } from './ui';
 import { NetworkManager } from './network';
 import { RemotePlayersManager } from './game';
-import { NETWORK_UPDATE_INTERVAL, GROUND_SIZE } from './config/gameConstants';
+import { NETWORK_UPDATE_INTERVAL, POC_TERRAIN_SIZE } from './config/gameConstants';
 import './style.css';
 
 async function init() {
@@ -31,11 +32,11 @@ async function init() {
     console.log('All assets loaded');
   });
 
-  // Initialize ground
-  const ground = new Ground(scene);
+  // Initialize POC ground (new terrain system)
+  const ground = new PocGround(scene);
 
   // Initialize terrain physics
-  const terrainPhysics = new TerrainPhysics(ground, GROUND_SIZE);
+  const terrainPhysics = new TerrainPhysics(ground, POC_TERRAIN_SIZE);
 
   // Initialize input handler
   const inputHandler = new InputHandler();

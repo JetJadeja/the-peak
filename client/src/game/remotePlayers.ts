@@ -268,7 +268,7 @@ export class RemotePlayersManager {
     window.removeEventListener('resize', this.handleResize);
 
     // Remove all players
-    this.players.forEach((player, id) => {
+    this.players.forEach((_player, id) => {
       this.removePlayer(id);
     });
     this.players.clear();

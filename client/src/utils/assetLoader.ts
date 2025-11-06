@@ -13,7 +13,7 @@ export class AssetLoader {
     this.loadingManager = new THREE.LoadingManager();
     this.gltfLoader = new GLTFLoader(this.loadingManager);
 
-    this.loadingManager.onProgress = (url, loaded, total) => {
+    this.loadingManager.onProgress = (_url, loaded, total) => {
       const progress = (loaded / total) * 100;
       this.onProgress?.(progress);
     };

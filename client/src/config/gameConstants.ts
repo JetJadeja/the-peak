@@ -56,3 +56,53 @@ export const REMOTE_PLAYER_LERP_SPEED = 0.2; // Interpolation speed for remote p
 
 // UI Configuration
 export const ERROR_DISPLAY_DURATION = 5000; // milliseconds
+
+// ========================================
+// POC TERRAIN SYSTEM CONFIGURATION
+// ========================================
+
+// Terrain Size and Detail Constants
+export const POC_TERRAIN_SIZE = 100; // units (matching existing system)
+export const POC_TERRAIN_SEGMENTS = 100; // 10,201 vertices total
+export const POC_TERRAIN_SEED = "mountain-pass-v1"; // Fixed seed for determinism
+
+// Noise Generation Parameters (Fractional Brownian Motion)
+export const BASE_NOISE_SCALE = 0.08; // Controls "zoom" of terrain features (was 0.04)
+export const OCTAVES = 3; // Number of noise layers to combine (was 5)
+export const PERSISTENCE = 0.6; // Each octave's contribution (was 0.5)
+export const LACUNARITY = 2.0; // Frequency multiplier between octaves
+export const HEIGHT_MULTIPLIER = 2.5; // Maximum terrain elevation in units (was 10)
+
+// Road System Parameters
+export const ROAD_WIDTH = 6; // Width of drivable surface
+export const ROAD_INFLUENCE_RADIUS = 15; // How far terrain flattening extends
+export const ROAD_FLATTEN_STRENGTH = 2.5; // Exponential falloff curve strength
+export const ROAD_SHOULDER_HEIGHT_OFFSET = 0.2; // Road depression below terrain
+
+// Visual Style - Color Palette (Art of Rally inspired)
+export const COLOR_VALLEY = 0x8bc34a; // Brighter grass green (was 0x7cb342)
+export const COLOR_MIDLAND = 0xaed581; // Light green-yellow (was 0x9ccc65)
+export const COLOR_HIGHLAND = 0xbcaaa4; // Light warm brown (was 0x8d6e63)
+export const COLOR_PEAK = 0x90a4ae; // Light blue-grey (was 0x607d8b)
+export const COLOR_CLIFF = 0xa1887f; // Light rock brown - MUCH LIGHTER (was 0x5d4037)
+export const COLOR_ROAD = 0x333333; // Dark grey asphalt
+export const COLOR_ROAD_LINE = 0xffeb3b; // Yellow center line
+
+// Lighting Parameters - Golden Hour Setup
+export const SUN_COLOR = 0xfff4e6; // Warm orange-yellow
+export const SUN_INTENSITY = 1.2; // Boosted for golden hour glow
+export const SUN_POSITION = { x: 40, y: 25, z: 30 }; // Low angle for long shadows
+export const AMBIENT_LIGHT_COLOR_POC = 0xffeaa7; // Warm fill light
+export const AMBIENT_LIGHT_INTENSITY_POC = 0.4; // Subtle ambient
+export const RIM_LIGHT_COLOR = 0x74b9ff; // Cool blue accent
+export const RIM_LIGHT_INTENSITY = 0.25; // Subtle rim lighting
+export const RIM_LIGHT_POSITION = { x: -30, y: 15, z: -30 }; // Opposite sun
+
+// Atmospheric Parameters - Sky and Fog
+export const SKY_COLOR_HORIZON = 0xffeaa7; // Golden yellow horizon
+export const SKY_COLOR_ZENITH = 0x74b9ff; // Soft blue sky
+export const FOG_COLOR = 0xffeaa7; // Match horizon color
+export const FOG_DENSITY = 0.012; // Exponential fog density
+
+// Debug Toggles
+export const DEBUG_SHOW_GRID = true; // Show grid helper during development

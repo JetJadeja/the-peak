@@ -1,16 +1,16 @@
 import * as THREE from 'three';
 import { TerrainPhysics as ITerrainPhysics, RaycastTarget } from '../physics/types';
-import { Ground } from './ground';
+import { IGround } from './groundInterface';
 
 /**
  * Handles physics queries for terrain.
  * Separates physics concerns from rendering/mesh management.
  */
 export class TerrainPhysics implements ITerrainPhysics, RaycastTarget {
-  private ground: Ground;
+  private ground: IGround;
   private bounds: { minX: number; maxX: number; minZ: number; maxZ: number };
 
-  constructor(ground: Ground, terrainSize: number) {
+  constructor(ground: IGround, terrainSize: number) {
     this.ground = ground;
     
     // Calculate terrain bounds (centered at origin)

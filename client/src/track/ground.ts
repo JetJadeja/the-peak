@@ -6,8 +6,9 @@ import {
   TERRAIN_HEIGHT,
   TERRAIN_FREQUENCY,
 } from '../config/gameConstants';
+import { IGround } from './groundInterface';
 
-export class Ground {
+export class Ground implements IGround {
   private mesh: THREE.Mesh;
 
   constructor(scene: THREE.Scene) {
