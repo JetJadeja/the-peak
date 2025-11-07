@@ -91,14 +91,21 @@ async function init() {
   });
 
   networkManager.setOnPlayerUpdated((data) => {
-    remotePlayersManager.updatePlayer(data.id, data.position, data.rotation);
+    remotePlayersManager.updatePlayer(
+      data.id,
+      data.position,
+      data.rotation,
+      data.velocity,
+      data.steeringAngle
+    );
   });
 
   // Show name input UI
   const nameInputUI = new NameInputUI();
-  nameInputUI.setOnSubmit((username) => {
-    console.log(`Joining game as: ${username}`);
-    networkManager.joinGame(username);
+  nameInputUI.setOnSubmit((username, color) => {
+    console.log(`Joining game as: ${username} with color: ${color}`);
+    playerCar.setColor(color);
+    networkManager.joinGame(username, color);
     nameInputUI.hide();
     startGame();
   });
@@ -136,11 +143,13 @@ async function init() {
         const position = playerCar.getPosition();
         const rotation = playerCar.getRotation();
         const velocity = playerCar.getVelocity();
+        const steeringAngle = playerCar.getSteeringAngle();
 
         networkManager.sendPlayerUpdate({
           position: { x: position.x, y: position.y, z: position.z },
           rotation,
           velocity,
+          steeringAngle,
         });
 
         updateTimer = 0;

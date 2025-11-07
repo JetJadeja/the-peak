@@ -1,6 +1,6 @@
-import { createNoise2D, NoiseFunction2D } from 'simplex-noise';
-import alea from 'alea';
-import { RoadPath } from './roadPath';
+import { createNoise2D, NoiseFunction2D } from "simplex-noise";
+import alea from "alea";
+import { RoadPath } from "./roadPath";
 import {
   POC_TERRAIN_SIZE,
   POC_TERRAIN_SEGMENTS,
@@ -12,7 +12,7 @@ import {
   SMOOTHING_PASSES,
   ROAD_SMOOTHING_RADIUS,
   ROAD_SMOOTHING_STRENGTH,
-} from '../config/gameConstants';
+} from "../config/gameConstants";
 
 /**
  * Metadata about the generated heightmap
@@ -57,23 +57,23 @@ export class HeightmapGenerator {
     const vertexCount = (this.segments + 1) * (this.segments + 1);
     const heightmap = new Float32Array(vertexCount);
 
-    console.log('  → Step 1: Generating smooth rolling hills...');
+    console.log("  → Step 1: Generating smooth rolling hills...");
     // Step 1: Generate rolling hills using continuous Simplex noise
     this.generateRollingHills(heightmap);
 
-    console.log('  → Step 2: Applying multiple smoothing passes...');
+    console.log("  → Step 2: Applying multiple smoothing passes...");
     // Step 2: Apply heavy smoothing for butter-smooth terrain
     this.applyMultipleSmoothing(heightmap);
 
-    console.log('  → Step 3: Applying edge falloff...');
+    console.log("  → Step 3: Applying edge falloff...");
     // Step 3: Apply edge falloff to hide boundaries
     this.applyEdgeFalloff(heightmap);
 
-    console.log('  → Step 4: Smoothing road surface...');
+    console.log("  → Step 4: Smoothing road surface...");
     // Step 4: Gentle road smoothing (NOT flattening - road follows hills)
     this.applyRoadSmoothing(heightmap);
 
-    console.log('  → Step 5: Calculating metadata...');
+    console.log("  → Step 5: Calculating metadata...");
     // Step 5: Calculate metadata
     const metadata = this.calculateMetadata(heightmap);
 
@@ -106,16 +106,16 @@ export class HeightmapGenerator {
           const frequency = Math.pow(2, octave);
           const sampleX = x * ROLLING_HILLS_NOISE_SCALE * frequency;
           const sampleZ = z * ROLLING_HILLS_NOISE_SCALE * frequency;
-          
+
           const noiseValue = this.noise2D(sampleX, sampleZ);
           height += noiseValue * amplitude;
-          
+
           amplitude *= 0.5; // Each octave contributes half as much
         }
 
         // Scale by height range and add base elevation
         // Result: terrain ranges from 2 to 5 units in height
-        height = (height * ROLLING_HILLS_HEIGHT) + ROLLING_HILLS_BASE_ELEVATION;
+        height = height * ROLLING_HILLS_HEIGHT + ROLLING_HILLS_BASE_ELEVATION;
 
         heightmap[index] = height;
       }
@@ -128,30 +128,29 @@ export class HeightmapGenerator {
    */
   private applySmoothingPass(heightmap: Float32Array): void {
     const temp = new Float32Array(heightmap.length);
-    
+
     // Apply Gaussian blur kernel to interior vertices only
     for (let row = 1; row < this.segments; row++) {
       for (let col = 1; col < this.segments; col++) {
         const idx = row * (this.segments + 1) + col;
-        
+
         // Get 9 heights (center + 8 neighbors)
         const c = heightmap[idx]; // center
-        const n = heightmap[(row-1) * (this.segments+1) + col]; // north
-        const s = heightmap[(row+1) * (this.segments+1) + col]; // south
-        const e = heightmap[row * (this.segments+1) + (col+1)]; // east
-        const w = heightmap[row * (this.segments+1) + (col-1)]; // west
-        const ne = heightmap[(row-1) * (this.segments+1) + (col+1)]; // northeast
-        const nw = heightmap[(row-1) * (this.segments+1) + (col-1)]; // northwest
-        const se = heightmap[(row+1) * (this.segments+1) + (col+1)]; // southeast
-        const sw = heightmap[(row+1) * (this.segments+1) + (col-1)]; // southwest
-        
+        const n = heightmap[(row - 1) * (this.segments + 1) + col]; // north
+        const s = heightmap[(row + 1) * (this.segments + 1) + col]; // south
+        const e = heightmap[row * (this.segments + 1) + (col + 1)]; // east
+        const w = heightmap[row * (this.segments + 1) + (col - 1)]; // west
+        const ne = heightmap[(row - 1) * (this.segments + 1) + (col + 1)]; // northeast
+        const nw = heightmap[(row - 1) * (this.segments + 1) + (col - 1)]; // northwest
+        const se = heightmap[(row + 1) * (this.segments + 1) + (col + 1)]; // southeast
+        const sw = heightmap[(row + 1) * (this.segments + 1) + (col - 1)]; // southwest
+
         // Apply Gaussian kernel weights
-        temp[idx] = c * 0.25 + 
-                    (n + s + e + w) * 0.125 +
-                    (ne + nw + se + sw) * 0.0625;
+        temp[idx] =
+          c * 0.25 + (n + s + e + w) * 0.125 + (ne + nw + se + sw) * 0.0625;
       }
     }
-    
+
     // Copy smoothed values back (skip edges to preserve boundary)
     for (let row = 1; row < this.segments; row++) {
       for (let col = 1; col < this.segments; col++) {
@@ -177,7 +176,7 @@ export class HeightmapGenerator {
   private applyRoadSmoothing(heightmap: Float32Array): void {
     const halfSize = this.size / 2;
     const temp = new Float32Array(heightmap.length);
-    
+
     // Copy original heights
     for (let i = 0; i < heightmap.length; i++) {
       temp[i] = heightmap[i];
@@ -197,31 +196,37 @@ export class HeightmapGenerator {
         // Only smooth within road smoothing radius
         if (distance < ROAD_SMOOTHING_RADIUS) {
           const originalHeight = temp[index];
-          
+
           // Get average of nearby vertices for gentle smoothing
           let avgHeight = 0;
           let count = 0;
-          
+
           // Sample 3x3 neighborhood
           for (let dr = -1; dr <= 1; dr++) {
             for (let dc = -1; dc <= 1; dc++) {
               const nr = row + dr;
               const nc = col + dc;
-              
-              if (nr >= 0 && nr <= this.segments && nc >= 0 && nc <= this.segments) {
+
+              if (
+                nr >= 0 &&
+                nr <= this.segments &&
+                nc >= 0 &&
+                nc <= this.segments
+              ) {
                 const nidx = nr * (this.segments + 1) + nc;
                 avgHeight += temp[nidx];
                 count++;
               }
             }
           }
-          
+
           avgHeight /= count;
-          
+
           // Blend between original and smoothed based on distance and strength
           const normalizedDistance = distance / ROAD_SMOOTHING_RADIUS;
-          const smoothFactor = (1.0 - normalizedDistance) * ROAD_SMOOTHING_STRENGTH;
-          
+          const smoothFactor =
+            (1.0 - normalizedDistance) * ROAD_SMOOTHING_STRENGTH;
+
           heightmap[index] = this.lerp(originalHeight, avgHeight, smoothFactor);
         }
       }
@@ -266,22 +271,22 @@ export class HeightmapGenerator {
     const halfSize = this.size / 2;
     const falloffStart = 0.7; // Start falloff at 70% from center (was 0.6)
     const falloffRange = 1.0 - falloffStart;
-    
+
     for (let row = 0; row <= this.segments; row++) {
       for (let col = 0; col <= this.segments; col++) {
         const x = (col / this.segments) * this.size - halfSize;
         const z = (row / this.segments) * this.size - halfSize;
-        
+
         // Use max distance (square boundary, not circular)
         const normalizedX = Math.abs(x) / halfSize;
         const normalizedZ = Math.abs(z) / halfSize;
         const distFromCenter = Math.max(normalizedX, normalizedZ);
-        
+
         if (distFromCenter > falloffStart) {
           // Calculate cubic falloff for extra smooth transition
           const progress = (distFromCenter - falloffStart) / falloffRange;
-          const falloff = 1.0 - (progress * progress * progress); // Cubic for smoother
-          
+          const falloff = 1.0 - progress * progress * progress; // Cubic for smoother
+
           const idx = row * (this.segments + 1) + col;
           heightmap[idx] *= falloff;
         }
@@ -298,12 +303,12 @@ export class HeightmapGenerator {
     // Calculate maximum slope
     let maxSlope = 0;
     const cellSize = this.size / this.segments;
-    
+
     for (let row = 0; row < this.segments; row++) {
       for (let col = 0; col < this.segments; col++) {
         const idx = row * (this.segments + 1) + col;
         const height = heightmap[idx];
-        
+
         // Check right and down neighbors
         if (col < this.segments) {
           const rightIdx = row * (this.segments + 1) + (col + 1);
@@ -311,7 +316,7 @@ export class HeightmapGenerator {
           const slope = Math.atan(heightDiff / cellSize) * (180 / Math.PI);
           maxSlope = Math.max(maxSlope, slope);
         }
-        
+
         if (row < this.segments) {
           const downIdx = (row + 1) * (this.segments + 1) + col;
           const heightDiff = Math.abs(height - heightmap[downIdx]);
@@ -320,7 +325,7 @@ export class HeightmapGenerator {
         }
       }
     }
-    
+
     console.log(`  ✓ Max slope angle: ${maxSlope.toFixed(1)}° (target: <35°)`);
   }
 
@@ -328,7 +333,7 @@ export class HeightmapGenerator {
    * Get interpolated height at any world position
    * Uses bilinear interpolation between grid vertices
    * @param x - World X coordinate
-   * @param z - World Z coordinate  
+   * @param z - World Z coordinate
    * @param heightmap - The heightmap array
    * @returns Interpolated height
    */
@@ -373,4 +378,3 @@ export class HeightmapGenerator {
     return height;
   }
 }
-

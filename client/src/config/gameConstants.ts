@@ -26,10 +26,32 @@ export const CAR_DECELERATION = 0.95;
 export const CAR_MIN_SPEED_THRESHOLD = 0.1;
 export const CAR_INITIAL_POSITION = { x: -42, y: 0, z: -42 }; // Start at track beginning
 
+// Car Color Configuration
+export const CAR_COLORS = [
+  { name: "Yellow", hex: "#DEAF1A" },
+  { name: "Red", hex: "#FF0000" },
+  { name: "Blue", hex: "#0066FF" },
+  { name: "Green", hex: "#00AA00" },
+  { name: "Black", hex: "#1A1A1A" },
+  { name: "White", hex: "#FFFFFF" },
+  { name: "Orange", hex: "#FF6600" },
+  { name: "Purple", hex: "#9900FF" },
+  { name: "Pink", hex: "#FF1493" },
+  { name: "Cyan", hex: "#00FFFF" },
+];
+export const DEFAULT_CAR_COLOR = "#DEAF1A";
+
 // Raycasting Configuration (for terrain following)
 export const WHEEL_RADIUS = 0.33; // Wheel radius in world units (from E36 model analysis)
 export const RAYCAST_START_HEIGHT = 50; // Height to start raycasts from (must be above max terrain)
 export const DEBUG_SHOW_RAYCASTS = true; // Show visual debug lines for raycasts
+
+// Wheel Animation Configuration
+export const MAX_STEERING_ANGLE = Math.PI / 6; // 30 degrees maximum steering angle
+export const STEERING_SPEED = 0.08; // How fast steering responds to input
+export const STEERING_RETURN_SPEED = 0.12; // How fast steering returns to center
+export const STEERING_VISUAL_MULTIPLIER = 0.5; // Visual reduction (50% of actual)
+export const WHEEL_ROTATION_ORDER = "ZYX" as const; // Critical: steering before rolling
 
 // Terrain Following Configuration
 export const TERRAIN_FOLLOW_ENABLE_ROTATION = true; // Enable pitch/roll based on terrain slope

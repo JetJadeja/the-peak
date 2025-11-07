@@ -77,3 +77,39 @@ export function validateUsername(username: unknown): ValidationResult {
 export function sanitizeUsername(username: string): string {
   return username.trim();
 }
+
+/**
+ * Validates a color hex string
+ * @param color - The color hex string to validate
+ * @returns ValidationResult with isValid flag and optional error message
+ */
+export function validateColor(color: unknown): ValidationResult {
+  // Check if color exists
+  if (!color) {
+    return {
+      isValid: false,
+      error: 'Color is required',
+    };
+  }
+
+  // Check if color is a string
+  if (typeof color !== 'string') {
+    return {
+      isValid: false,
+      error: 'Color must be a string',
+    };
+  }
+
+  // Check if valid hex color format (#RRGGBB)
+  const hexColorRegex = /^#[0-9A-Fa-f]{6}$/;
+  if (!hexColorRegex.test(color)) {
+    return {
+      isValid: false,
+      error: 'Color must be a valid hex color (e.g., #FF0000)',
+    };
+  }
+
+  return {
+    isValid: true,
+  };
+}

@@ -10,8 +10,9 @@ import { generateRandomSpawnPosition } from '../utils/spawnUtils';
 import {
   DEFAULT_PLAYER_ROTATION,
   DEFAULT_PLAYER_VELOCITY,
+  DEFAULT_PLAYER_COLOR,
 } from '../config/gameConstants';
-import { validateUsername, sanitizeUsername } from '../utils/validation';
+import { validateUsername, sanitizeUsername, validateColor } from '../utils/validation';
 
 export function registerSocketHandlers(
   io: Server,
@@ -33,11 +34,22 @@ function handleJoinGame(
 ): void {
   socket.on(SocketEvent.JOIN_GAME, (payload: JoinGamePayload) => {
     // Validate username
-    const validationResult = validateUsername(payload.username);
-    if (!validationResult.isValid) {
-      console.warn(`Invalid username attempt: ${validationResult.error} (${socket.id})`);
-      socket.emit('error', { message: validationResult.error });
+    const usernameValidation = validateUsername(payload.username);
+    if (!usernameValidation.isValid) {
+      console.warn(`Invalid username attempt: ${usernameValidation.error} (${socket.id})`);
+      socket.emit('error', { message: usernameValidation.error });
       return;
+    }
+
+    // Validate color (optional, use default if not provided or invalid)
+    let playerColor = DEFAULT_PLAYER_COLOR;
+    if (payload.color) {
+      const colorValidation = validateColor(payload.color);
+      if (colorValidation.isValid) {
+        playerColor = payload.color;
+      } else {
+        console.warn(`Invalid color attempt: ${colorValidation.error} (${socket.id}), using default`);
+      }
     }
 
     // Sanitize username
@@ -51,6 +63,8 @@ function handleJoinGame(
       position: spawnPosition,
       rotation: { ...DEFAULT_PLAYER_ROTATION },
       velocity: { ...DEFAULT_PLAYER_VELOCITY },
+      color: playerColor,
+      steeringAngle: 0,
     };
 
     gameStateManager.addPlayer(player);
@@ -61,7 +75,7 @@ function handleJoinGame(
     // Notify all other players about the new player
     socket.broadcast.emit(SocketEvent.PLAYER_JOINED, player);
 
-    console.log(`Player joined: ${sanitizedUsername} (${socket.id}) at position (${spawnPosition.x.toFixed(1)}, ${spawnPosition.y.toFixed(1)}, ${spawnPosition.z.toFixed(1)})`);
+    console.log(`Player joined: ${sanitizedUsername} (${socket.id}) with color ${playerColor} at position (${spawnPosition.x.toFixed(1)}, ${spawnPosition.y.toFixed(1)}, ${spawnPosition.z.toFixed(1)})`);
   });
 }
 
@@ -77,6 +91,7 @@ function handlePlayerUpdate(
         position: payload.position,
         rotation: payload.rotation,
         velocity: payload.velocity,
+        steeringAngle: payload.steeringAngle,
       });
 
       // Broadcast update to all other players

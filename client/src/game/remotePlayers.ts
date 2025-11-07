@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import { Player } from '@the-peak/shared';
-import { AssetLoader } from '../utils/assetLoader';
+import { AssetLoader, CarColorManager } from '../utils';
 import { TerrainPhysics } from '../track/terrainPhysics';
-import { TerrainRaycaster, TerrainFollower } from '../physics';
-import { CAR_MODEL_PATH, REMOTE_PLAYER_LERP_SPEED, RAYCAST_START_HEIGHT } from '../config/gameConstants';
+import { TerrainRaycaster, TerrainFollower, WheelSystem } from '../physics';
+import { WheelAnimator } from '../player';
+import { CAR_MODEL_PATH, REMOTE_PLAYER_LERP_SPEED, RAYCAST_START_HEIGHT, WHEEL_RADIUS } from '../config/gameConstants';
 
 interface RemotePlayer {
   model: THREE.Group;
@@ -13,6 +14,8 @@ interface RemotePlayer {
   targetPosition: THREE.Vector3;
   targetRotation: THREE.Euler;
   terrainFollower: TerrainFollower;
+  wheelSystem: WheelSystem;
+  wheelAnimator: WheelAnimator;
 }
 
 export class RemotePlayersManager {
@@ -112,6 +115,11 @@ export class RemotePlayersManager {
     model.position.set(player.position.x, player.position.y, player.position.z);
     model.rotation.set(player.rotation.x, player.rotation.y, player.rotation.z);
 
+    // Apply player's color
+    if (player.color) {
+      CarColorManager.applyColor(model, player.color);
+    }
+
     const label = this.createPlayerLabel(player.username);
     model.add(label);
 
@@ -148,6 +156,14 @@ export class RemotePlayersManager {
       );
     }
 
+    // Initialize wheel system and animator for this remote player
+    const wheelSystem = new WheelSystem();
+    const wheelAnimator = new WheelAnimator();
+    
+    // WheelSystem for physics, WheelAnimator independent for animation
+    wheelSystem.detectWheels(model, WHEEL_RADIUS);
+    wheelAnimator.initialize(model); // TEMP's approach
+
     this.players.set(player.id, {
       model,
       label,
@@ -155,6 +171,8 @@ export class RemotePlayersManager {
       targetPosition,
       targetRotation,
       terrainFollower,
+      wheelSystem,
+      wheelAnimator,
     });
 
     console.log(`Added remote player: ${player.username} (${player.id})`);
@@ -166,6 +184,9 @@ export class RemotePlayersManager {
 
     // Dispose terrain follower
     player.terrainFollower.dispose();
+    
+    // Reset wheel system
+    player.wheelSystem.reset();
 
     // Remove label from model first
     player.model.remove(player.label);
@@ -198,7 +219,9 @@ export class RemotePlayersManager {
   updatePlayer(
     playerId: string,
     position: { x: number; y: number; z: number },
-    rotation: { x: number; y: number; z: number }
+    rotation: { x: number; y: number; z: number },
+    velocity: { x: number; y: number; z: number },
+    steeringAngle: number
   ): void {
     const player = this.players.get(playerId);
     if (!player) return;
@@ -206,6 +229,10 @@ export class RemotePlayersManager {
     // Update target position and rotation instead of directly setting
     player.targetPosition.set(position.x, position.y, position.z);
     player.targetRotation.set(rotation.x, rotation.y, rotation.z);
+    
+    // Store velocity and steering angle for wheel animation
+    player.data.velocity = velocity;
+    player.data.steeringAngle = steeringAngle;
   }
 
   update(): void {
@@ -252,6 +279,17 @@ export class RemotePlayersManager {
         player.targetRotation.z,
         REMOTE_PLAYER_LERP_SPEED
       );
+
+      // Update wheel animation
+      if (player.wheelAnimator.isInitialized()) {
+        // Calculate speed from velocity for wheel rotation
+        const velocity = player.data.velocity;
+        const speed = Math.sqrt(velocity.x ** 2 + velocity.z ** 2);
+        
+        player.wheelAnimator.updateRotation(speed, WHEEL_RADIUS);
+        player.wheelAnimator.setSteeringAngle(player.data.steeringAngle);
+        player.wheelAnimator.animate();
+      }
     });
   }
 

@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { InputHandler } from "./input";
-import { AssetLoader } from "../utils/assetLoader";
+import { WheelAnimator } from "./wheelAnimator";
+import { AssetLoader, CarColorManager } from "../utils";
 import { TerrainPhysics } from "../track/terrainPhysics";
 import { TerrainRaycaster, WheelSystem, TerrainFollower } from "../physics";
 import {
@@ -18,6 +19,10 @@ import {
   TERRAIN_FOLLOW_HEIGHT_SMOOTHING,
   MAX_PITCH_ANGLE,
   MAX_ROLL_ANGLE,
+  DEFAULT_CAR_COLOR,
+  MAX_STEERING_ANGLE,
+  STEERING_SPEED,
+  STEERING_RETURN_SPEED,
 } from "../config/gameConstants";
 
 export class PlayerCar {
@@ -26,6 +31,8 @@ export class PlayerCar {
   private scene: THREE.Scene | null = null;
   private currentSpeed: number = 0;
   private isReady: boolean = false;
+  private color: string = DEFAULT_CAR_COLOR;
+  private steeringAngle: number = 0;
 
   // Reusable vectors to avoid garbage collection
   private forwardDirection: THREE.Vector3 = new THREE.Vector3();
@@ -34,6 +41,7 @@ export class PlayerCar {
   // Physics systems
   private wheelSystem: WheelSystem;
   private terrainFollower: TerrainFollower;
+  private wheelAnimator: WheelAnimator;
 
   constructor(
     inputHandler: InputHandler,
@@ -54,6 +62,9 @@ export class PlayerCar {
       maxPitchAngle: MAX_PITCH_ANGLE,
       maxRollAngle: MAX_ROLL_ANGLE,
     });
+    
+    // Initialize wheel animator
+    this.wheelAnimator = new WheelAnimator();
   }
 
   async load(): Promise<THREE.Group> {
@@ -88,6 +99,12 @@ export class PlayerCar {
           "PlayerCar: Failed to detect wheels, using fallback positioning"
         );
       }
+      
+      // Initialize wheel animator independently (TEMP's approach)
+      const animatorReady = this.wheelAnimator.initialize(this.model);
+      if (!animatorReady) {
+        console.warn('PlayerCar: WheelAnimator failed to initialize');
+      }
 
       // Enable debug visualization if configured
       if (DEBUG_SHOW_RAYCASTS && this.scene && wheelsDetected) {
@@ -121,6 +138,28 @@ export class PlayerCar {
       this.currentSpeed *= CAR_DECELERATION;
     }
 
+    // Update steering angle (visual wheel turning)
+    if (input.turn !== 0) {
+      // Invert turn direction for correct steering
+      const direction = -input.turn;
+      this.steeringAngle += direction * STEERING_SPEED;
+      // Clamp to max steering angle
+      this.steeringAngle = Math.max(
+        -MAX_STEERING_ANGLE,
+        Math.min(MAX_STEERING_ANGLE, this.steeringAngle)
+      );
+    } else {
+      // Return steering to center when no input
+      if (Math.abs(this.steeringAngle) > 0.001) {
+        const returnAmount = Math.sign(this.steeringAngle) * STEERING_RETURN_SPEED;
+        if (Math.abs(this.steeringAngle) < STEERING_RETURN_SPEED) {
+          this.steeringAngle = 0;
+        } else {
+          this.steeringAngle -= returnAmount;
+        }
+      }
+    }
+
     // Rotation (steering) - only turn when moving
     if (Math.abs(this.currentSpeed) > CAR_MIN_SPEED_THRESHOLD) {
       this.model.rotation.y += input.turn * CAR_TURN_SPEED * deltaTime;
@@ -134,6 +173,13 @@ export class PlayerCar {
       this.forwardDirection.multiplyScalar(this.currentSpeed * deltaTime);
 
       this.model.position.add(this.forwardDirection);
+    }
+
+    // Update wheel animation
+    if (this.wheelAnimator.isInitialized()) {
+      this.wheelAnimator.updateRotation(this.currentSpeed, WHEEL_RADIUS);
+      this.wheelAnimator.setSteeringAngle(this.steeringAngle);
+      this.wheelAnimator.animate();
     }
 
     // Follow terrain using the terrain follower system
@@ -187,6 +233,17 @@ export class PlayerCar {
 
   isModelReady(): boolean {
     return this.isReady;
+  }
+
+  setColor(hexColor: string): void {
+    this.color = hexColor;
+    if (this.model) {
+      CarColorManager.applyColor(this.model, hexColor);
+    }
+  }
+
+  getSteeringAngle(): number {
+    return this.steeringAngle;
   }
 
   dispose(): void {

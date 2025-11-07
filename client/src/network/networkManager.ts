@@ -59,8 +59,8 @@ export class NetworkManager {
     );
   }
 
-  joinGame(username: string): void {
-    const payload: JoinGamePayload = { username };
+  joinGame(username: string, color: string): void {
+    const payload: JoinGamePayload = { username, color };
     this.socket.emit(SocketEvent.JOIN_GAME, payload);
   }
 

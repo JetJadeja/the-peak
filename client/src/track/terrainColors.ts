@@ -1,13 +1,13 @@
-import * as THREE from 'three';
-import { RoadPath } from './roadPath';
-import { HeightmapMetadata } from './heightmapGenerator';
+import * as THREE from "three";
+import { RoadPath } from "./roadPath";
+import { HeightmapMetadata } from "./heightmapGenerator";
 import {
   TERRAIN_COLOR,
   COLOR_ROAD,
   COLOR_ROAD_LINE,
   COLOR_ROAD_EDGE,
   ROAD_WIDTH,
-} from '../config/gameConstants';
+} from "../config/gameConstants";
 
 /**
  * TerrainColorizer applies vertex colors to terrain geometry
@@ -43,7 +43,7 @@ export class TerrainColorizer {
    * Colors are based on height, slope, and road proximity
    */
   applyColors(): void {
-    const positions = this.geometry.getAttribute('position');
+    const positions = this.geometry.getAttribute("position");
     const vertexCount = positions.count;
 
     // Create color array (RGB for each vertex)
@@ -75,7 +75,7 @@ export class TerrainColorizer {
     }
 
     // Add color attribute to geometry
-    this.geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    this.geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
   }
 
   // Old height-based and slope-based coloring removed - using single terrain color
@@ -84,28 +84,32 @@ export class TerrainColorizer {
    * Get road surface color with center and edge lines
    * Includes texture variation for realistic asphalt appearance
    */
-  private getRoadColor(x: number, z: number, distanceFromCenter: number): THREE.Color {
+  private getRoadColor(
+    x: number,
+    z: number,
+    distanceFromCenter: number
+  ): THREE.Color {
     const halfRoadWidth = ROAD_WIDTH / 2;
-    
+
     // Deterministic noise for asphalt texture
     const seed = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453;
-    const noise = (seed - Math.floor(seed)) - 0.5; // [-0.5, 0.5]
-    
+    const noise = seed - Math.floor(seed) - 0.5; // [-0.5, 0.5]
+
     // Base road color with subtle texture variation
     let roadColor = this.roadColor.clone();
-    const textureFactor = 1.0 + (noise * 0.1); // ±10% variation
+    const textureFactor = 1.0 + noise * 0.1; // ±10% variation
     roadColor.multiplyScalar(textureFactor);
-    
+
     // Center line (yellow dashed effect)
     if (distanceFromCenter < 0.2) {
-      const centerBlend = 1.0 - (distanceFromCenter / 0.2);
+      const centerBlend = 1.0 - distanceFromCenter / 0.2;
       roadColor.lerp(this.roadLineColor, centerBlend * 0.4);
     }
-    
+
     // Edge lines (white stripes)
     const distFromEdge = Math.abs(halfRoadWidth - distanceFromCenter);
     if (distFromEdge < 0.15) {
-      const edgeBlend = 1.0 - (distFromEdge / 0.15);
+      const edgeBlend = 1.0 - distFromEdge / 0.15;
       roadColor.lerp(this.roadEdgeColor, edgeBlend * 0.3);
     }
 
@@ -122,7 +126,7 @@ export class TerrainColorizer {
 export function createSlopeVisualization(
   geometry: THREE.BufferGeometry
 ): THREE.BufferAttribute {
-  const normals = geometry.getAttribute('normal');
+  const normals = geometry.getAttribute("normal");
   const vertexCount = normals.count;
   const colors = new Float32Array(vertexCount * 3);
 
@@ -170,7 +174,7 @@ export function createHeightVisualization(
   geometry: THREE.BufferGeometry,
   metadata: HeightmapMetadata
 ): THREE.BufferAttribute {
-  const positions = geometry.getAttribute('position');
+  const positions = geometry.getAttribute("position");
   const vertexCount = positions.count;
   const colors = new Float32Array(vertexCount * 3);
 
@@ -188,4 +192,3 @@ export function createHeightVisualization(
 
   return new THREE.BufferAttribute(colors, 3);
 }
-
