@@ -181,20 +181,38 @@ export class RoadPath {
 
 /**
  * Factory function to create the default POC road path
- * This defines the specific mountain pass route for the proof of concept
+ * This defines a full-map rally stage that flows from bottom-left to top-right
  * @returns RoadPath instance with POC control points
  */
 export function createPOCRoadPath(): RoadPath {
-  // Define control points for a winding mountain pass
-  // Path flows from valley floor (start) to elevated overlook (finish)
-  // Total elevation gain: ~6 units over ~85 units of distance (7% grade)
+  // Define control points for a diagonal rally stage across the entire map
+  // Route: Bottom-left corner → Top-right corner
+  // Total length: ~900-1000 units, elevation gain: ~7.5 units
+  // 4 distinct sections: Entry → Valley Floor → Technical → Summit
+  
   const controlPoints = [
-    new THREE.Vector3(0, 0, 0),       // Start: valley floor at origin
-    new THREE.Vector3(20, 1, 15),     // Gentle rise, slight right curve
-    new THREE.Vector3(30, 3, 35),     // Continuing climb, straightening
-    new THREE.Vector3(20, 4, 50),     // Apex of curve, turning left
-    new THREE.Vector3(0, 5, 70),      // Final approach, still climbing
-    new THREE.Vector3(-10, 6, 85),    // Finish: elevated overlook
+    // === Section 1: The Entry (flowing S-curves) ===
+    new THREE.Vector3(-42, 0.0, -42),    // Start - bottom-left corner
+    new THREE.Vector3(-35, 0.5, -20),    // Early left sweep
+    new THREE.Vector3(-40, 1.0, 0),      // Gentle right curve
+    new THREE.Vector3(-30, 1.5, 15),     // Flow into center
+    
+    // === Section 2: Valley Floor (fast sweepers) ===
+    new THREE.Vector3(-15, 2.0, 25),     // Fast left sweep
+    new THREE.Vector3(0, 2.5, 30),       // Center point - fastest section
+    new THREE.Vector3(15, 3.0, 28),      // Right sweep
+    
+    // === Section 3: Technical Section (tight corners, climbing) ===
+    new THREE.Vector3(25, 3.5, 20),      // Start climbing, right
+    new THREE.Vector3(30, 4.5, 5),       // Hairpin left - key corner
+    new THREE.Vector3(25, 5.0, -5),      // Tight right
+    new THREE.Vector3(20, 5.5, 5),       // Recovery left
+    new THREE.Vector3(25, 6.0, 15),      // Exit technical section
+    
+    // === Section 4: Summit Run (fast finale) ===
+    new THREE.Vector3(35, 6.5, 25),      // Fast right sweep
+    new THREE.Vector3(40, 7.0, 35),      // Final left curve
+    new THREE.Vector3(42, 7.5, 42),      // Finish - top-right corner overlook
   ];
 
   // Create road path with high sample density (1000 samples)

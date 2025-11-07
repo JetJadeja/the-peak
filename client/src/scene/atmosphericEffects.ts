@@ -24,10 +24,10 @@ export function setupAtmosphericEffects(scene: THREE.Scene): {
   scene.add(skyMesh);
   console.log('  → Sky gradient created');
 
-  // Setup exponential fog
+  // Setup subtle exponential fog
   const fog = new THREE.FogExp2(FOG_COLOR, FOG_DENSITY);
   scene.fog = fog;
-  console.log(`  → Fog configured (density: ${FOG_DENSITY})`);
+  console.log(`  → Subtle fog configured (density: ${FOG_DENSITY})`);
 
   // Set scene background to match horizon color
   // This appears behind the sky sphere (if visible through gaps)

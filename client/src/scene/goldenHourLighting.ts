@@ -3,6 +3,7 @@ import {
   SUN_COLOR,
   SUN_INTENSITY,
   SUN_POSITION,
+  SUN_SHADOW_SOFTNESS,
   AMBIENT_LIGHT_COLOR_POC,
   AMBIENT_LIGHT_INTENSITY_POC,
   RIM_LIGHT_COLOR,
@@ -42,9 +43,9 @@ export function setupGoldenHourLighting(scene: THREE.Scene): {
   sun.shadow.camera.near = 0.5;
   sun.shadow.camera.far = 150;
   
-  // Shadow tweaks for quality
+  // Shadow tweaks for quality - extra soft for Art of Rally painterly look
   sun.shadow.bias = -0.0001; // Prevents shadow acne
-  sun.shadow.radius = 2; // Soft shadow edges (works with PCFSoftShadowMap)
+  sun.shadow.radius = SUN_SHADOW_SOFTNESS; // Very soft, painterly shadows
   
   scene.add(sun);
   console.log('  → Sun light configured');

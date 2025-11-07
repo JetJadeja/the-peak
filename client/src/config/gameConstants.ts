@@ -24,7 +24,7 @@ export const CAR_SPEED = 20;
 export const CAR_TURN_SPEED = 2;
 export const CAR_DECELERATION = 0.95;
 export const CAR_MIN_SPEED_THRESHOLD = 0.1;
-export const CAR_INITIAL_POSITION = { x: 0, y: 0, z: 0 };
+export const CAR_INITIAL_POSITION = { x: -42, y: 0, z: -42 }; // Start at track beginning
 
 // Raycasting Configuration (for terrain following)
 export const WHEEL_RADIUS = 0.33; // Wheel radius in world units (from E36 model analysis)
@@ -66,43 +66,40 @@ export const POC_TERRAIN_SIZE = 100; // units (matching existing system)
 export const POC_TERRAIN_SEGMENTS = 100; // 10,201 vertices total
 export const POC_TERRAIN_SEED = "mountain-pass-v1"; // Fixed seed for determinism
 
-// Noise Generation Parameters (Fractional Brownian Motion)
-export const BASE_NOISE_SCALE = 0.08; // Controls "zoom" of terrain features (was 0.04)
-export const OCTAVES = 3; // Number of noise layers to combine (was 5)
-export const PERSISTENCE = 0.6; // Each octave's contribution (was 0.5)
-export const LACUNARITY = 2.0; // Frequency multiplier between octaves
-export const HEIGHT_MULTIPLIER = 2.5; // Maximum terrain elevation in units (was 10)
+// Rolling Hills Terrain Generation
+export const ROLLING_HILLS_NOISE_SCALE = 0.018; // Very large, smooth features
+export const ROLLING_HILLS_OCTAVES = 2; // Minimal layering for smooth hills
+export const ROLLING_HILLS_HEIGHT = 3; // Gentle 3-unit variation (2-5 total range)
+export const ROLLING_HILLS_BASE_ELEVATION = 2; // Base height of 2 units
+export const SMOOTHING_PASSES = 4; // Multiple smoothing iterations for butter-smooth terrain
 
-// Road System Parameters
+// Road Integration (smoothing, not flattening)
 export const ROAD_WIDTH = 6; // Width of drivable surface
-export const ROAD_INFLUENCE_RADIUS = 15; // How far terrain flattening extends
-export const ROAD_FLATTEN_STRENGTH = 2.5; // Exponential falloff curve strength
-export const ROAD_SHOULDER_HEIGHT_OFFSET = 0.2; // Road depression below terrain
+export const ROAD_SMOOTHING_RADIUS = 8; // Gentle smoothing along road
+export const ROAD_SMOOTHING_STRENGTH = 0.7; // How much smoothing to apply
 
-// Visual Style - Color Palette (Art of Rally inspired)
-export const COLOR_VALLEY = 0x8bc34a; // Brighter grass green (was 0x7cb342)
-export const COLOR_MIDLAND = 0xaed581; // Light green-yellow (was 0x9ccc65)
-export const COLOR_HIGHLAND = 0xbcaaa4; // Light warm brown (was 0x8d6e63)
-export const COLOR_PEAK = 0x90a4ae; // Light blue-grey (was 0x607d8b)
-export const COLOR_CLIFF = 0xa1887f; // Light rock brown - MUCH LIGHTER (was 0x5d4037)
+// Visual Style - Simplified Color Palette (Art of Rally inspired)
+export const TERRAIN_COLOR = 0x8bc34a; // Grass green - single terrain color
 export const COLOR_ROAD = 0x333333; // Dark grey asphalt
 export const COLOR_ROAD_LINE = 0xffeb3b; // Yellow center line
+export const COLOR_ROAD_EDGE = 0xffffff; // White edge lines
 
-// Lighting Parameters - Golden Hour Setup
+// Lighting Parameters - Golden Hour Setup (Softer, more Art of Rally style)
 export const SUN_COLOR = 0xfff4e6; // Warm orange-yellow
-export const SUN_INTENSITY = 1.2; // Boosted for golden hour glow
+export const SUN_INTENSITY = 1.0; // Reduced for softer lighting (was 1.2)
 export const SUN_POSITION = { x: 40, y: 25, z: 30 }; // Low angle for long shadows
+export const SUN_SHADOW_SOFTNESS = 5; // Increased for painterly shadows (was 2)
 export const AMBIENT_LIGHT_COLOR_POC = 0xffeaa7; // Warm fill light
-export const AMBIENT_LIGHT_INTENSITY_POC = 0.4; // Subtle ambient
+export const AMBIENT_LIGHT_INTENSITY_POC = 0.5; // Increased fill (was 0.4)
 export const RIM_LIGHT_COLOR = 0x74b9ff; // Cool blue accent
-export const RIM_LIGHT_INTENSITY = 0.25; // Subtle rim lighting
+export const RIM_LIGHT_INTENSITY = 0.15; // More subtle (was 0.25)
 export const RIM_LIGHT_POSITION = { x: -30, y: 15, z: -30 }; // Opposite sun
 
-// Atmospheric Parameters - Sky and Fog
+// Atmospheric Parameters - Sky and Fog (Subtler for Art of Rally feel)
 export const SKY_COLOR_HORIZON = 0xffeaa7; // Golden yellow horizon
 export const SKY_COLOR_ZENITH = 0x74b9ff; // Soft blue sky
 export const FOG_COLOR = 0xffeaa7; // Match horizon color
-export const FOG_DENSITY = 0.012; // Exponential fog density
+export const FOG_DENSITY = 0.008; // Lighter, more subtle fog (was 0.012)
 
 // Debug Toggles
 export const DEBUG_SHOW_GRID = true; // Show grid helper during development

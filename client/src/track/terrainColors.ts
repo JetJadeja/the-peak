@@ -2,13 +2,10 @@ import * as THREE from 'three';
 import { RoadPath } from './roadPath';
 import { HeightmapMetadata } from './heightmapGenerator';
 import {
-  COLOR_VALLEY,
-  COLOR_MIDLAND,
-  COLOR_HIGHLAND,
-  COLOR_PEAK,
-  COLOR_CLIFF,
+  TERRAIN_COLOR,
   COLOR_ROAD,
   COLOR_ROAD_LINE,
+  COLOR_ROAD_EDGE,
   ROAD_WIDTH,
 } from '../config/gameConstants';
 
@@ -19,34 +16,26 @@ import {
 export class TerrainColorizer {
   private geometry: THREE.BufferGeometry;
   private roadPath: RoadPath;
-  private metadata: HeightmapMetadata;
 
   // Pre-created color objects for performance
-  private valleyColor: THREE.Color;
-  private midlandColor: THREE.Color;
-  private highlandColor: THREE.Color;
-  private peakColor: THREE.Color;
-  private cliffColor: THREE.Color;
+  private terrainColor: THREE.Color;
   private roadColor: THREE.Color;
   private roadLineColor: THREE.Color;
+  private roadEdgeColor: THREE.Color;
 
   constructor(
     geometry: THREE.BufferGeometry,
     roadPath: RoadPath,
-    metadata: HeightmapMetadata
+    _metadata: HeightmapMetadata
   ) {
     this.geometry = geometry;
     this.roadPath = roadPath;
-    this.metadata = metadata;
 
     // Initialize color objects
-    this.valleyColor = new THREE.Color(COLOR_VALLEY);
-    this.midlandColor = new THREE.Color(COLOR_MIDLAND);
-    this.highlandColor = new THREE.Color(COLOR_HIGHLAND);
-    this.peakColor = new THREE.Color(COLOR_PEAK);
-    this.cliffColor = new THREE.Color(COLOR_CLIFF);
+    this.terrainColor = new THREE.Color(TERRAIN_COLOR);
     this.roadColor = new THREE.Color(COLOR_ROAD);
     this.roadLineColor = new THREE.Color(COLOR_ROAD_LINE);
+    this.roadEdgeColor = new THREE.Color(COLOR_ROAD_EDGE);
   }
 
   /**
@@ -55,7 +44,6 @@ export class TerrainColorizer {
    */
   applyColors(): void {
     const positions = this.geometry.getAttribute('position');
-    const normals = this.geometry.getAttribute('normal');
     const vertexCount = positions.count;
 
     // Create color array (RGB for each vertex)
@@ -64,13 +52,7 @@ export class TerrainColorizer {
     for (let i = 0; i < vertexCount; i++) {
       // Get vertex position (already rotated to Y-up by this point)
       const x = positions.getX(i);
-      const y = positions.getY(i);
       const z = positions.getZ(i);
-
-      // Get surface normal for slope calculation
-      const nx = normals.getX(i);
-      const ny = normals.getY(i);
-      const nz = normals.getZ(i);
 
       // Calculate distance to road
       const { distance: roadDistance } = this.roadPath.findClosestPoint(x, z);
@@ -82,12 +64,9 @@ export class TerrainColorizer {
         // On the road surface
         color = this.getRoadColor(x, z, roadDistance);
       } else {
-        // Natural terrain coloring
-        color = this.getTerrainColor(y, nx, ny, nz);
+        // Natural terrain - simple grass color
+        color = this.terrainColor.clone();
       }
-
-      // Add subtle deterministic variation
-      color = this.applyColorVariation(color, x, z);
 
       // Write to color array
       colors[i * 3] = color.r;
@@ -99,97 +78,38 @@ export class TerrainColorizer {
     this.geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   }
 
-  /**
-   * Get terrain color based on height and slope
-   */
-  private getTerrainColor(
-    height: number,
-    _nx: number,
-    ny: number,
-    _nz: number
-  ): THREE.Color {
-    // Calculate slope from normal (angle from vertical)
-    // ny = 1 means flat, ny = 0 means vertical
-    const slope = Math.acos(ny); // Radians from vertical
-    const slopeDegrees = (slope * 180) / Math.PI;
-
-    // Steep slopes get cliff color regardless of height
-    if (slopeDegrees > 45) {
-      // Blend between terrain color and cliff color (45-55 degree transition)
-      if (slopeDegrees > 55) {
-        return this.cliffColor.clone();
-      } else {
-        // Smooth transition
-        const blend = (slopeDegrees - 45) / 10; // 0 to 1 over 45-55 degrees
-        const terrainColor = this.getHeightBasedColor(height);
-        return terrainColor.lerp(this.cliffColor, blend);
-      }
-    }
-
-    // Normal height-based coloring
-    return this.getHeightBasedColor(height);
-  }
+  // Old height-based and slope-based coloring removed - using single terrain color
 
   /**
-   * Get color based purely on height
+   * Get road surface color with center and edge lines
+   * Includes texture variation for realistic asphalt appearance
    */
-  private getHeightBasedColor(height: number): THREE.Color {
-    // Normalize height to [0, 1]
-    const { minHeight, maxHeight } = this.metadata;
-    const normalizedHeight = (height - minHeight) / (maxHeight - minHeight);
-
-    // Define color zones with smooth blending
-    if (normalizedHeight < 0.25) {
-      // Valley zone
-      return this.valleyColor.clone();
-    } else if (normalizedHeight < 0.5) {
-      // Valley -> Midland transition
-      const blend = (normalizedHeight - 0.25) / 0.25;
-      return this.valleyColor.clone().lerp(this.midlandColor, blend);
-    } else if (normalizedHeight < 0.75) {
-      // Midland -> Highland transition
-      const blend = (normalizedHeight - 0.5) / 0.25;
-      return this.midlandColor.clone().lerp(this.highlandColor, blend);
-    } else {
-      // Highland -> Peak transition
-      const blend = (normalizedHeight - 0.75) / 0.25;
-      return this.highlandColor.clone().lerp(this.peakColor, blend);
-    }
-  }
-
-  /**
-   * Get road surface color with optional center line
-   */
-  private getRoadColor(_x: number, _z: number, distanceFromCenter: number): THREE.Color {
-    // Check if near center line (within 0.3 units)
-    if (distanceFromCenter < 0.3) {
-      // Blend road color with line color for center marking
-      const blend = 1.0 - distanceFromCenter / 0.3; // 1 at center, 0 at edge
-      return this.roadColor.clone().lerp(this.roadLineColor, blend * 0.3); // 30% line color max
-    }
-
-    return this.roadColor.clone();
-  }
-
-  /**
-   * Apply subtle deterministic color variation
-   * Uses position-based pseudo-random to maintain determinism
-   */
-  private applyColorVariation(color: THREE.Color, x: number, z: number): THREE.Color {
-    // Deterministic pseudo-random based on position
+  private getRoadColor(x: number, z: number, distanceFromCenter: number): THREE.Color {
+    const halfRoadWidth = ROAD_WIDTH / 2;
+    
+    // Deterministic noise for asphalt texture
     const seed = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453;
-    const random = seed - Math.floor(seed); // Fractional part [0, 1]
+    const noise = (seed - Math.floor(seed)) - 0.5; // [-0.5, 0.5]
+    
+    // Base road color with subtle texture variation
+    let roadColor = this.roadColor.clone();
+    const textureFactor = 1.0 + (noise * 0.1); // ±10% variation
+    roadColor.multiplyScalar(textureFactor);
+    
+    // Center line (yellow dashed effect)
+    if (distanceFromCenter < 0.2) {
+      const centerBlend = 1.0 - (distanceFromCenter / 0.2);
+      roadColor.lerp(this.roadLineColor, centerBlend * 0.4);
+    }
+    
+    // Edge lines (white stripes)
+    const distFromEdge = Math.abs(halfRoadWidth - distanceFromCenter);
+    if (distFromEdge < 0.15) {
+      const edgeBlend = 1.0 - (distFromEdge / 0.15);
+      roadColor.lerp(this.roadEdgeColor, edgeBlend * 0.3);
+    }
 
-    // Apply subtle variation (±8% lightness)
-    const variation = (random - 0.5) * 0.16; // Range: -0.08 to +0.08
-    const factor = 1.0 + variation;
-
-    // Multiply RGB by factor to adjust lightness
-    return new THREE.Color(
-      Math.max(0, Math.min(1, color.r * factor)),
-      Math.max(0, Math.min(1, color.g * factor)),
-      Math.max(0, Math.min(1, color.b * factor))
-    );
+    return roadColor;
   }
 }
 
