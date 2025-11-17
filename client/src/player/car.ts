@@ -19,7 +19,6 @@ import {
   TERRAIN_FOLLOW_HEIGHT_SMOOTHING,
   MAX_PITCH_ANGLE,
   MAX_ROLL_ANGLE,
-  DEFAULT_CAR_COLOR,
   MAX_STEERING_ANGLE,
   STEERING_SPEED,
   STEERING_RETURN_SPEED,
@@ -31,7 +30,6 @@ export class PlayerCar {
   private scene: THREE.Scene | null = null;
   private currentSpeed: number = 0;
   private isReady: boolean = false;
-  private color: string = DEFAULT_CAR_COLOR;
   private steeringAngle: number = 0;
 
   // Reusable vectors to avoid garbage collection
@@ -236,7 +234,6 @@ export class PlayerCar {
   }
 
   setColor(hexColor: string): void {
-    this.color = hexColor;
     if (this.model) {
       CarColorManager.applyColor(this.model, hexColor);
     }

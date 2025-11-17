@@ -7,6 +7,7 @@ import { NameInputUI, ErrorDisplay } from './ui';
 import { NetworkManager } from './network';
 import { RemotePlayersManager } from './game';
 import { NETWORK_UPDATE_INTERVAL, POC_TERRAIN_SIZE } from './config/gameConstants';
+import { Player } from '@the-peak/shared';
 import './style.css';
 
 async function init() {
@@ -71,7 +72,7 @@ async function init() {
   networkManager.setOnGameState((gameState) => {
     console.log('Received game state:', gameState);
     // Add all existing players except ourselves
-    Object.values(gameState.players).forEach((player) => {
+    Object.values(gameState.players).forEach((player: Player) => {
       if (player.id !== networkManager.getPlayerId()) {
         remotePlayersManager.addPlayer(player);
       }

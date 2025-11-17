@@ -44,7 +44,7 @@ export const DEFAULT_CAR_COLOR = "#DEAF1A";
 // Raycasting Configuration (for terrain following)
 export const WHEEL_RADIUS = 0.33; // Wheel radius in world units (from E36 model analysis)
 export const RAYCAST_START_HEIGHT = 50; // Height to start raycasts from (must be above max terrain)
-export const DEBUG_SHOW_RAYCASTS = true; // Show visual debug lines for raycasts
+export const DEBUG_SHOW_RAYCASTS = false; // Show visual debug lines for raycasts
 
 // Wheel Animation Configuration
 export const MAX_STEERING_ANGLE = Math.PI / 6; // 30 degrees maximum steering angle
