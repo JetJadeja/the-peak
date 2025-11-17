@@ -1,15 +1,16 @@
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { Express } from 'express';
-import { CLIENT_URL } from './config/constants';
+import { ALLOWED_ORIGINS } from './config/constants';
 
 export function createHttpServer(app: Express) {
   const httpServer = createServer(app);
 
   const io = new Server(httpServer, {
     cors: {
-      origin: CLIENT_URL,
+      origin: ALLOWED_ORIGINS,
       methods: ['GET', 'POST'],
+      credentials: true,
     },
   });
 
