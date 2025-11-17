@@ -2,7 +2,6 @@
   "name": "@the-peak/server",
   "version": "1.0.0",
   "description": "Server for the-peak multiplayer racing game",
-  "type": "module",
   "main": "./dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
